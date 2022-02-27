@@ -1,7 +1,7 @@
 package config
 
 type PinFile struct {
-	PinnedTools []Pin `yaml:"pinned_tools,pinnedTools"`
+	PinnedTools []Pin `yaml:"pinnedTools"`
 }
 
 type Pin struct {

@@ -35,7 +35,7 @@ type State interface {
 }
 
 type Settings struct {
-	RefreshInterval time.Duration `yaml:"refresh_interval,refreshInterval"`
+	RefreshInterval time.Duration `yaml:"refreshInterval"`
 	Local           string        `yaml:"local"`
 	Type            string        `yaml:"type"`
 }
@@ -63,11 +63,11 @@ func NewCache(log *logrus.Logger, localRoot string, settings *Settings) Cache {
 }
 
 type refreshState struct {
-	LastRefresh time.Time `yaml:"last_refresh,lastRefresh"`
+	LastRefresh time.Time `yaml:"lastRefresh"`
 }
 
 type toolState struct {
 	Name               string   `yaml:"name"`
-	RecommendedVersion string   `yaml:"recommended_version,recommendedVersion"`
+	RecommendedVersion string   `yaml:"recommendedVersion"`
 	Versions           []string `yaml:"versions"`
 }

@@ -1,6 +1,7 @@
 package driver
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -68,7 +69,7 @@ func invoke(opts *invokeOptions) error {
 	// Ideally we would be using a syscall.Exec() here to simply replace the driver process with the
 	// target binary one. However... this is not cross-platform compatible as this pattern is not
 	// supported on Windows. Hence we need to a more complex jiggle to ensure that signals are
-	// forwarded, etc
+	// forwarded, etc.
 	cmd := exec.Command(path, opts.args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -80,7 +81,8 @@ func invoke(opts *invokeOptions) error {
 
 	signal.Notify(sigs)
 	if err := cmd.Run(); err != nil {
-		if _, ok := err.(*exec.ExitError); !ok {
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) {
 			opts.log.WithError(err).Errorf("Failed to invoke the target binary %q.", path)
 			os.Exit(invokeExitCode)
 			return err

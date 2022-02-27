@@ -25,6 +25,7 @@ var (
 	_ Cache = &localStorage{}
 
 	_ Storage = &gcsStorage{}
+	_ Storage = &githubStorage{}
 	_ Storage = &localStorage{}
 	_ Storage = &s3Storage{}
 )

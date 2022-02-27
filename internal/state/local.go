@@ -2,7 +2,7 @@ package state
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -77,14 +77,14 @@ func (s *localState) RecommendedVersion(tool string) (string, error) {
 func (s *localState) Refresh(force bool) error {
 	var state refreshState
 
-	stateFile, err := s.storage.OpenFile(cacheStatusFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0644)
+	stateFile, err := s.storage.OpenFile(cacheStatusFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0o644)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to open state cache status file.")
 		return err
 	}
 	defer stateFile.Close()
 
-	stateContent, err := ioutil.ReadAll(stateFile)
+	stateContent, err := io.ReadAll(stateFile)
 	if err != nil {
 		s.log.WithError(err).Error("Unable to read state cache status file.")
 		return err
@@ -239,7 +239,7 @@ func (s *localState) readToolState(tool string) (*toolState, error) {
 	}
 	defer stateFile.Close()
 
-	stateContent, err := ioutil.ReadAll(stateFile)
+	stateContent, err := io.ReadAll(stateFile)
 	if err != nil {
 		s.log.WithError(err).Errorf("Unable to read state file for tool %q.", tool)
 		return nil, err
@@ -260,7 +260,7 @@ func (s *localState) writeToolState(tool string, state *toolState) error {
 		return err
 	}
 
-	stateFile, err := s.storage.OpenFile(tool+".yaml.new", os.O_CREATE|os.O_TRUNC, 0644)
+	stateFile, err := s.storage.OpenFile(tool+".yaml.new", os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		s.log.WithError(err).Errorf("Unable to open state file for tool %q.", tool)
 		return err

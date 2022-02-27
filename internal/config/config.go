@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -42,9 +43,10 @@ func Init(log *logrus.Logger) (*Settings, error) {
 	v.AutomaticEnv()
 
 	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+		parseErr := &viper.ConfigParseError{}
+		if errors.As(err, &viper.ConfigFileNotFoundError{}) {
 			log.Debug("No configuration file was found.")
-		} else if err, ok = err.(viper.ConfigParseError); ok {
+		} else if errors.As(err, parseErr) {
 			log.WithError(err).Error("Failed to parse the configuration file.")
 			return nil, err
 		} else {

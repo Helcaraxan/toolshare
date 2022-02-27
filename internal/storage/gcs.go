@@ -51,12 +51,12 @@ func (s *gcsStorage) Fetch(b types.Binary, targetPath string) error {
 	}
 	defer src.Close()
 
-	if err = os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+	if err = os.MkdirAll(filepath.Dir(targetPath), 0o755); err != nil {
 		s.log.WithError(err).Errorf("Unable to create directory that will contain %q.", targetPath)
 		return err
 	}
 
-	dst, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY, 0755)
+	dst, err := os.OpenFile(targetPath, os.O_CREATE|os.O_WRONLY, 0o755)
 	if err != nil {
 		s.log.WithError(err).Errorf("Unable to open the target file %q.", targetPath)
 		return err

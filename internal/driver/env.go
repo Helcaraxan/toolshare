@@ -3,7 +3,7 @@ package driver
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,7 +63,7 @@ type envOptions struct {
 }
 
 func env(opts *envOptions) error {
-	infos, err := ioutil.ReadDir(filepath.Join(opts.settings.Root, subscribeFolder))
+	infos, err := os.ReadDir(filepath.Join(opts.settings.Root, subscribeFolder))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			opts.log.Error("Environment is empty. No subscriptions were found.")
@@ -75,7 +75,13 @@ func env(opts *envOptions) error {
 
 	candidates := map[string]envTool{}
 	for _, info := range infos {
-		if info.IsDir() || info.Mode() != 0755 {
+		var fInfo fs.FileInfo
+		fInfo, err = info.Info()
+		if err != nil {
+			opts.log.WithError(err).Warnf("Failed to retrieve filesystem info for %q, skipping.", info.Name())
+			continue
+		}
+		if info.IsDir() || fInfo.Mode() != 0o755 {
 			// We don't expect any folders or non-executable files amongst the subscriptions but we
 			// skip any we encounter to be safe.
 			continue
@@ -149,7 +155,7 @@ func envPinnedTools(log *logrus.Logger) map[string]envTool {
 }
 
 func envReadPinFile(log *logrus.Logger, path string, tools map[string]envTool) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return

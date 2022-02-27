@@ -124,7 +124,7 @@ func subscribeInitShimFolder(log *logrus.Logger, toolshareRoot string) error {
 			log.WithError(err).Error("Could not assert existence of subscriptions folder.")
 			return err
 		}
-		if err = os.MkdirAll(subscriptionsPath, 0755); err != nil {
+		if err = os.MkdirAll(subscriptionsPath, 0o755); err != nil {
 			log.WithError(err).Error("Could not create subscriptions folder.")
 			return err
 		}
@@ -229,7 +229,7 @@ func subscribeWriteShim(opts *subscribeOptions, tool string, name string, conten
 	} else if err = shim.Close(); err != nil {
 		opts.log.WithError(err).Errorf("Unable to close temporary shim file for %q.", tool)
 		return err
-	} else if err = os.Chmod(shim.Name(), 0755); err != nil {
+	} else if err = os.Chmod(shim.Name(), 0o755); err != nil {
 		opts.log.WithError(err).Error("Unable to make the temporary shim file executable.")
 		return err
 	}

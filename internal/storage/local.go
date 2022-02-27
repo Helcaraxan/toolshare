@@ -88,12 +88,12 @@ func (s *localStorage) localCopyBinary(srcPath string, dstPath string) error {
 	}
 	defer src.Close()
 
-	if err = s.storage.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
+	if err = s.storage.MkdirAll(filepath.Dir(dstPath), 0o755); err != nil {
 		s.log.WithError(err).Errorf("Unable to create directory that will contain %q.", dstPath)
 		return err
 	}
 
-	dst, err := s.storage.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0755)
+	dst, err := s.storage.OpenFile(dstPath, os.O_CREATE|os.O_WRONLY, 0o755)
 	if err != nil {
 		s.log.WithError(err).Errorf("Unable to open the target file %q.", dstPath)
 		return err
