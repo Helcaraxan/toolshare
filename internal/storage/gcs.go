@@ -12,7 +12,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/sirupsen/logrus"
 
-	"github.com/improbable/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/types"
 )
 
 type gcsStorage struct {

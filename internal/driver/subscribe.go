@@ -12,8 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/improbable/toolshare/internal/config"
-	"github.com/improbable/toolshare/internal/state"
+	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/state"
 )
 
 const (

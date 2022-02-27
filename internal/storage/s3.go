@@ -3,7 +3,7 @@ package storage
 import (
 	"github.com/sirupsen/logrus"
 
-	"github.com/improbable/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/types"
 )
 
 type s3Storage struct {

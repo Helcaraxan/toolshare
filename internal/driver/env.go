@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/improbable/toolshare/internal/config"
-	"github.com/improbable/toolshare/internal/state"
+	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/state"
 )
 
 var errFail = errors.New("failed")

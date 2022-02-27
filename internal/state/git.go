@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/sirupsen/logrus"
 
-	"github.com/improbable/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/types"
 )
 
 type gitState struct {

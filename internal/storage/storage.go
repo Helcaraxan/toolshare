@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 
-	"github.com/improbable/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/types"
 )
 
 type Cache interface {

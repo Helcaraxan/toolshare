@@ -12,10 +12,10 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/improbable/toolshare/internal/config"
-	"github.com/improbable/toolshare/internal/state"
-	"github.com/improbable/toolshare/internal/storage"
-	"github.com/improbable/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/state"
+	"github.com/Helcaraxan/toolshare/internal/storage"
+	"github.com/Helcaraxan/toolshare/internal/types"
 )
 
 func NewInvokeCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
