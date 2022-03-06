@@ -33,6 +33,7 @@ var (
 type Settings struct {
 	Local string
 	Auth  string
+	// TODO: Remotes []
 }
 
 func InitConfiguration(v *viper.Viper, prefix string) {
