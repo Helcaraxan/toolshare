@@ -64,13 +64,13 @@ Slightly better: "Oh, Dave updated `test-runner-x` yesterday but he's out today 
 
 Good: "Oh, Dave updated `test-runner-x` yesterday, recorded it in the onboarding doc, and pushed a new CI container - you just need to update your `tool-runner-x` to `1.2.3` and you're done."
 
+Best: "Oh, Dave updated `test-runner-x` yesterday, and I didn't even know that because my invokes just seamlessly started to use it; that's nice!"
+
 `toolshare`:
 
 1. Update source control (contains team-member's change to tools)
 1. `cd {checkout}`
-1. {do regular things and it fails locally}
-1. `toolshare install`
-    * now you're in sync with whatever tool(s) were changed; if it still fails, it's _not_ tool drift that's causing this.
+1. {do regular things and it ... Just Works - because toolshare will resolve versions per-invocation}
 
 #### ... when you are updating tool versions to keep up with fixes and features
 
@@ -88,11 +88,11 @@ Good: "Try it out locally, tell everyone to update to the version you chose, pus
 1. Update `.toolshare/test-runner-x.tool.yaml` to use your new version
 1. Commit, push, PR.
 
-* Team-members will be notified to `toolshare install` (or their `direnv` or build-scripts does this up-front).
+* Team-members automatically pick up the change via tool-version resolution per-invoke. Only cost is a one-time lazy-fetch of the new binary.
 * CI (if you have followed our integration advice)
 
   * containerised: will (one-time) re-build containers to new unique hashes.
-  * non-containerised: will `toolshare install` at the front of build-scripts.
+  * non-containerised: incurs a one-time lazy-fetch of the new version at first invoke.
 
 #### ... where those people work on more than one thing on their computer
 
@@ -104,7 +104,7 @@ Good: "Oh, [direnv] should have set up your `PATH` when you `cd` into product B 
 
 `toolshare`:
 
-1. _There's nothing to do_; `toolshare` routes your `tool-runner-x` invocations (at a cost of a couple milliseconds per invoke) to the correct binary depending on which product (actually, the current-working-directory) you're inside.
+1. _There's nothing to do_; `toolshare` routes your `tool-runner-x` invocations (at a cost of a few milliseconds per invoke) to the correct binary depending on which product (actually, the current-working-directory) you're inside.
 
 [direnv]: https://direnv.net
 
@@ -122,8 +122,7 @@ Good: "Build the container and choose a new version tag for it, then update all 
 
 1. See [when you are updating tool versions to keep up with fixes and features] above.
 
-    * since `toolshare ci hash` is used to resolve the container version to run in, the container holds all necessary tool dependencies.
-    * since `toolshare install` is first-thing inside build-scripts, the tool dependencies are set-and-checked per build.
+    * since `toolshare install` is first-thing inside build-scripts, or it's not and lazy-fetch is used, the tool dependencies are set-and-checked per build.
 
 [when you are updating tool versions to keep up with fixes and features]: #when-you-are-updating-tool-versions-to-keep-up-with-fixes-and-features
 
@@ -139,7 +138,7 @@ Good: "{as above} ... and try it out in a staging set of the build farm first."
 
 1. See [when you are updating tool versions to keep up with fixes and features] above.
 
-    * since `toolshare install` is first-thing inside build-scripts, the tool dependencies are set-and-checked per build.
+    * since `toolshare install` is first-thing inside build-scripts, or lazy-fetch is used, the tool dependencies are set-and-checked per build.
 
 ### TODO: Yanking tools
 
