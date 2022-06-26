@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+*.orig
+*.zip
+*.retry
+*.sublime-workspace
+*.vagrant
+bin
