@@ -6,13 +6,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/state"
-	"github.com/Helcaraxan/toolshare/internal/storage"
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-func NewDownloadCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewDownloadCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &downloadOptions{
 		log:      log,
 		settings: settings,
@@ -46,7 +46,7 @@ func downloadFlags(cmd *cobra.Command, opts *downloadOptions) {
 
 type downloadOptions struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 
 	tool      string
 	version   string
@@ -88,13 +88,13 @@ func download(opts *downloadOptions) error {
 		}
 	}
 
-	s := storage.NewCache(opts.log, opts.settings.Root, opts.settings.Storage)
+	s := backend.NewCache(opts.log, opts.settings.Root, opts.settings.Storage)
 	for _, platform := range opts.platforms {
-		b := types.Binary{
+		b := tool.Binary{
 			Tool:     opts.tool,
 			Version:  opts.version,
-			Platform: platform,
-			Arch:     opts.arch,
+			Platform: tool.Platform(platform),
+			Arch:     tool.Arch(opts.arch),
 		}
 		path, err := s.Get(b)
 		if err != nil {

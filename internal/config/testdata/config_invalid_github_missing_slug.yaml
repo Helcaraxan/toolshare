@@ -1,0 +1,6 @@
+sources:
+  missing-slug:
+    type: github
+    github:
+      release_asset_template: test-tool_{os}-{arch}-{version}.tar.gz
+      archive_path_template: bin/test-tool{exe}

@@ -23,7 +23,7 @@ const (
 	subscribeFolder = "subscriptions"
 )
 
-func NewSubscribeCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewSubscribeCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &subscribeOptions{
 		log:      log,
 		settings: settings,
@@ -70,7 +70,7 @@ func subscribeFlags(cmd *cobra.Command, opts *subscribeOptions) {
 
 type subscribeOptions struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 
 	mode  string
 	tools []string

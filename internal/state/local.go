@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 const cacheStatusFile = "cache.status.yaml"
@@ -48,12 +48,12 @@ func (s *localState) AvailableTools() ([]string, error) {
 	return tools, nil
 }
 
-func (s *localState) AvailableVersions(tool string) ([]string, error) {
+func (s *localState) AvailableVersions(toolName string) ([]string, error) {
 	if err := s.Refresh(false); err != nil {
 		s.log.WithError(err).Warn("Failed to refresh state cache.")
 	}
 
-	state, err := s.readToolState(tool)
+	state, err := s.readToolState(toolName)
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +62,12 @@ func (s *localState) AvailableVersions(tool string) ([]string, error) {
 	return state.Versions, nil
 }
 
-func (s *localState) RecommendedVersion(tool string) (string, error) {
+func (s *localState) RecommendedVersion(toolName string) (string, error) {
 	if err := s.Refresh(false); err != nil {
 		s.log.WithError(err).Warn("Failed to refresh state cache.")
 	}
 
-	state, err := s.readToolState(tool)
+	state, err := s.readToolState(toolName)
 	if err != nil {
 		return "", err
 	}
@@ -134,12 +134,12 @@ func (s *localState) Fetch(target billy.Filesystem) error {
 			continue
 		}
 
-		tool := strings.TrimSuffix(info.Name(), ".yaml")
-		state, err = s.readToolState(tool)
+		toolName := strings.TrimSuffix(info.Name(), ".yaml")
+		state, err = s.readToolState(toolName)
 		if err != nil {
 			return err
 		}
-		if err = s.writeToolState(tool, state); err != nil {
+		if err = s.writeToolState(toolName, state); err != nil {
 			return err
 		}
 
@@ -167,7 +167,7 @@ func (s *localState) Fetch(target billy.Filesystem) error {
 	return nil
 }
 
-func (s *localState) RecommendVersion(binary types.Binary) error {
+func (s *localState) RecommendVersion(binary tool.Binary) error {
 	state, err := s.readToolState(binary.Tool)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func (s *localState) RecommendVersion(binary types.Binary) error {
 	return s.writeToolState(binary.Tool, state)
 }
 
-func (s *localState) AddVersions(binaries ...types.Binary) error {
+func (s *localState) AddVersions(binaries ...tool.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {
@@ -206,7 +206,7 @@ func (s *localState) AddVersions(binaries ...types.Binary) error {
 	return nil
 }
 
-func (s *localState) DeleteVersions(binaries ...types.Binary) error {
+func (s *localState) DeleteVersions(binaries ...tool.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {
@@ -227,13 +227,13 @@ func (s *localState) DeleteVersions(binaries ...types.Binary) error {
 	return nil
 }
 
-func (s *localState) readToolState(tool string) (*toolState, error) {
-	stateFile, err := s.storage.Open(tool + ".yaml")
+func (s *localState) readToolState(toolName string) (*toolState, error) {
+	stateFile, err := s.storage.Open(toolName + ".yaml")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			s.log.Errorf("No state file for tool %q available in state cache.", tool)
+			s.log.Errorf("No state file for tool %q available in state cache.", toolName)
 		} else {
-			s.log.WithError(err).Errorf("Unable to read state file for tool %q.", tool)
+			s.log.WithError(err).Errorf("Unable to read state file for tool %q.", toolName)
 		}
 		return nil, err
 	}
@@ -241,28 +241,28 @@ func (s *localState) readToolState(tool string) (*toolState, error) {
 
 	stateContent, err := io.ReadAll(stateFile)
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to read state file for tool %q.", tool)
+		s.log.WithError(err).Errorf("Unable to read state file for tool %q.", toolName)
 		return nil, err
 	}
 
 	var state toolState
 	if err = yaml.Unmarshal(stateContent, &state); err != nil {
-		s.log.WithError(err).Errorf("Unable to unmarshal state file for tool %q.", tool)
+		s.log.WithError(err).Errorf("Unable to unmarshal state file for tool %q.", toolName)
 		return nil, err
 	}
 	return &state, nil
 }
 
-func (s *localState) writeToolState(tool string, state *toolState) error {
+func (s *localState) writeToolState(toolName string, state *toolState) error {
 	stateContent, err := yaml.Marshal(state)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to marshal new state file content.")
 		return err
 	}
 
-	stateFile, err := s.storage.OpenFile(tool+".yaml.new", os.O_CREATE|os.O_TRUNC, 0o644)
+	stateFile, err := s.storage.OpenFile(toolName+".yaml.new", os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to open state file for tool %q.", tool)
+		s.log.WithError(err).Errorf("Unable to open state file for tool %q.", toolName)
 		return err
 	}
 	defer stateFile.Close()
@@ -272,7 +272,7 @@ func (s *localState) writeToolState(tool string, state *toolState) error {
 		return err
 	}
 
-	if err = s.storage.Rename(stateFile.Name(), tool+".yaml"); err != nil {
+	if err = s.storage.Rename(stateFile.Name(), toolName+".yaml"); err != nil {
 		s.log.WithError(err).Error("Unable to move temporary state file to permanent position.")
 	}
 	return nil

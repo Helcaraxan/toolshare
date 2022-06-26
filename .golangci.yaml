@@ -184,7 +184,7 @@ linters-settings:
     case:
       rules:
         json: snake
-        yaml: camel
+        yaml: snake
 
   unparam:
     # We assume that the toolshare repo is not intended to be used as a library for now.

@@ -10,7 +10,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/state"
 )
 
-func NewVersionsCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewVersionsCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &versionOpts{
 		log:      log,
 		settings: settings,
@@ -41,7 +41,7 @@ func versionFlags(cmd *cobra.Command, opts *versionOpts) {
 
 type versionOpts struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 
 	tool  string
 	count int

@@ -19,7 +19,7 @@ import (
 
 var errFail = errors.New("failed")
 
-func NewEnvCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewEnvCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &envOptions{
 		log:      log,
 		settings: settings,
@@ -59,7 +59,7 @@ follows:
 
 type envOptions struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 }
 
 func env(opts *envOptions) error {
@@ -164,17 +164,17 @@ func envReadPinFile(log *logrus.Logger, path string, tools map[string]envTool) {
 		return
 	}
 
-	pins := &config.PinFile{}
-	if err = yaml.Unmarshal(b, pins); err != nil {
+	env := &config.Environment{}
+	if err = yaml.Unmarshal(b, env); err != nil {
 		log.WithError(err).Warnf("Failed to unmarshal pin file at %q.", path)
 		return
 	}
 
-	for _, pin := range pins.PinnedTools {
-		if _, ok := tools[pin.Tool]; !ok {
-			tools[pin.Tool] = envTool{
-				tool:    pin.Tool,
-				version: pin.Version,
+	for tool, version := range env.Pins {
+		if _, ok := tools[tool]; !ok {
+			tools[tool] = envTool{
+				tool:    tool,
+				version: version,
 				source:  fmt.Sprintf("pinned in %q", path),
 			}
 		}

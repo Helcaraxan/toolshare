@@ -11,7 +11,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/state"
 )
 
-func NewListCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewListCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &listOptions{
 		log:      log,
 		settings: settings,
@@ -37,7 +37,7 @@ func NewListCommand(log *logrus.Logger, settings *config.Settings) *cobra.Comman
 
 type listOptions struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 
 	pattern string
 }

@@ -12,13 +12,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
+	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/state"
-	"github.com/Helcaraxan/toolshare/internal/storage"
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-func NewInvokeCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func NewInvokeCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
 	opts := &invokeOptions{
 		log:      log,
 		settings: settings,
@@ -42,7 +42,7 @@ about how the current environment is determined please see '%s env --help'.`, co
 
 type invokeOptions struct {
 	log      *logrus.Logger
-	settings *config.Settings
+	settings *config.Global
 
 	tool string
 	args []string
@@ -56,11 +56,11 @@ func invoke(opts *invokeOptions) error {
 		return err
 	}
 
-	path, err := storage.NewCache(opts.log, opts.settings.Root, opts.settings.Storage).Get(types.Binary{
+	path, err := backend.NewCache(opts.log, opts.settings.Root, opts.settings.Storage).Get(tool.Binary{
 		Tool:     opts.tool,
 		Version:  version,
-		Platform: runtime.GOOS,
-		Arch:     runtime.GOARCH,
+		Platform: tool.Platform(runtime.GOOS),
+		Arch:     tool.Arch(runtime.GOARCH),
 	})
 	if err != nil {
 		return err

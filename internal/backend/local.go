@@ -1,4 +1,4 @@
-package storage
+package backend
 
 import (
 	"errors"
@@ -9,18 +9,25 @@ import (
 	"github.com/go-git/go-billy/v5"
 	"github.com/sirupsen/logrus"
 
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type localStorage struct {
 	log     *logrus.Logger
-	remote  Storage
+	remote  Backend
 	storage billy.Filesystem
+
+	source config.Source
 }
 
-func (s *localStorage) Get(b types.Binary) (string, error) {
-	localPath := s.storagePath(b)
-	if _, err := s.storage.Stat(localPath); err == nil {
+func (s *localStorage) Get(b tool.Binary) (string, error) {
+	localPath, err := s.source.ResourcePath(b)
+	if err != nil {
+		return "", err
+	}
+
+	if _, err = s.storage.Stat(localPath); err == nil {
 		return localPath, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		s.log.WithError(err).Errorf("Unable to check local presence of %v.", b)
@@ -28,16 +35,15 @@ func (s *localStorage) Get(b types.Binary) (string, error) {
 	}
 
 	if s.remote == nil {
-		s.log.Debugf("Not fetch binary for %v as there is no remote configured.", b)
+		s.log.Debugf("Not fetching binary for %v as there is no remote configured.", b)
 		return "", errFailed
-	} else if err := s.remote.Fetch(b, localPath); err != nil {
+	} else if err = s.remote.Fetch(b, localPath); err != nil {
 		return "", err
 	}
-
 	return localPath, nil
 }
 
-func (s *localStorage) Fetch(b types.Binary, targetPath string) error {
+func (s *localStorage) Fetch(b tool.Binary, targetPath string) error {
 	if _, err := s.storage.Stat(targetPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		s.log.WithError(err).Errorf("Unable to check if %v already exists.", targetPath)
 		return err
@@ -46,8 +52,12 @@ func (s *localStorage) Fetch(b types.Binary, targetPath string) error {
 		return errFailed
 	}
 
-	localPath := s.storagePath(b)
-	if _, err := s.storage.Stat(localPath); err != nil {
+	localPath, err := s.source.ResourcePath(b)
+	if err != nil {
+		return err
+	}
+
+	if _, err = s.storage.Stat(localPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			s.log.WithError(err).Errorf("Unable to check availability of %v.", b)
 		} else {
@@ -55,29 +65,23 @@ func (s *localStorage) Fetch(b types.Binary, targetPath string) error {
 		}
 		return err
 	}
-
 	return s.localCopyBinary(localPath, targetPath)
 }
 
-func (s *localStorage) Store(b types.Binary, path string) error {
-	localPath := s.storagePath(b)
-	if _, err := s.storage.Stat(localPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+func (s *localStorage) Store(b tool.Binary, path string) error {
+	localPath, err := s.source.ResourcePath(b)
+	if err != nil {
+		return err
+	}
+
+	if _, err = s.storage.Stat(localPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		s.log.WithError(err).Errorf("Unable to check for the presence of %v.", b)
 		return err
 	} else if err == nil {
 		s.log.WithError(err).Errorf("Can not store %v as it is already present.", b)
 		return errFailed
 	}
-
 	return s.localCopyBinary(path, localPath)
-}
-
-func (s *localStorage) storagePath(b types.Binary) string {
-	name := b.Tool
-	if b.Platform == "windows" {
-		name += ".exe"
-	}
-	return filepath.Join(b.Tool, b.Version, b.Platform, b.Arch, name)
 }
 
 func (s *localStorage) localCopyBinary(srcPath string, dstPath string) error {

@@ -1,46 +1,49 @@
 package config
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-
-	"github.com/Helcaraxan/toolshare/internal/state"
-	"github.com/Helcaraxan/toolshare/internal/storage"
 )
 
 const (
-	DriverName = "imp-tool"
+	DriverName = "tbd"
 
 	configFileName = DriverName + ".yaml"
 )
 
-type Settings struct {
+type Global struct {
 	DisallowUnpinned bool
 	Root             string
-	State            *state.Settings
-	Storage          *storage.Settings
+	State            *State
+	Storage          *Storage
 }
 
-func Init(log *logrus.Logger, flags *pflag.FlagSet) (*Settings, error) {
-	s := &Settings{}
+type State struct {
+	RefreshInterval time.Duration `yaml:"refresh_interval"`
+	Local           string        `yaml:"local"`
+	Type            string        `yaml:"type"`
+}
+
+type Storage struct {
+	Local string
+}
+
+func Init(log *logrus.Logger, flags *pflag.FlagSet) (*Global, error) {
+	s := &Global{}
 
 	v := viper.New()
-	v.SetConfigName("config")
+	v.SetConfigName("tbd-conf")
 	v.SetConfigType("yaml")
 
-	configPaths, err := getConfigPaths(log)
-	if err != nil {
-		return nil, err
-	}
-
-	if err = v.BindPFlags(flags); err != nil {
+	configPaths := getConfigPaths()
+	if err := v.BindPFlags(flags); err != nil {
 		log.WithError(err).Error("Failed to")
 		return nil, err
 	}
@@ -51,7 +54,7 @@ func Init(log *logrus.Logger, flags *pflag.FlagSet) (*Settings, error) {
 			continue
 		}
 		v.SetConfigFile(configPath)
-		if err = v.MergeInConfig(); err != nil {
+		if err := v.MergeInConfig(); err != nil {
 			log.WithError(err).Error("Failed to read in standard config.")
 			return nil, err
 		}
@@ -79,7 +82,7 @@ func setConfigDefaults(v *viper.Viper) {
 	v.SetDefault("storageRoot", getLocalStorageRoot())
 }
 
-func getConfigPaths(log *logrus.Logger) ([]string, error) {
+func getConfigPaths() []string {
 	var configPaths []string
 	if p := systemConfigPath(); p != "" {
 		configPaths = append(configPaths, p)
@@ -87,12 +90,7 @@ func getConfigPaths(log *logrus.Logger) ([]string, error) {
 	if p := userConfigPath(); p != "" {
 		configPaths = append(configPaths, p)
 	}
-	ctxPaths, err := contextConfigPaths(log)
-	if err != nil {
-		return nil, err
-	}
-	configPaths = append(configPaths, ctxPaths...)
-	return configPaths, nil
+	return configPaths
 }
 
 func systemConfigPath() string {
@@ -122,28 +120,6 @@ func userConfigPath() string {
 	}
 }
 
-func contextConfigPaths(log *logrus.Logger) ([]string, error) {
-	wd, err := os.Getwd()
-	if err != nil {
-		log.WithError(err).Error("Failed to determine current working directory.")
-		return nil, errFailed
-	}
-
-	var paths []string
-	for {
-		path := filepath.Join(wd, configFileName)
-		if _, err = os.Stat(path); err == nil {
-			paths = append(paths, path)
-		}
-
-		if wd == "/" {
-			break
-		}
-		wd = filepath.Dir(wd)
-	}
-	return paths, nil
-}
-
 func getLocalStorageRoot() string {
 	switch runtime.GOOS {
 	case "darwin", "linux":
@@ -154,5 +130,3 @@ func getLocalStorageRoot() string {
 		return ""
 	}
 }
-
-var errFailed = errors.New("failed")
