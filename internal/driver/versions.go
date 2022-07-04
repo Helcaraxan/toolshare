@@ -1,19 +1,22 @@
 package driver
 
 import (
-	"fmt"
+	"errors"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/state"
+	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func NewVersionsCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
+func Versions(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
 	opts := &versionOpts{
-		log:      log,
-		settings: settings,
+		commonOpts: commonOpts{
+			log:    log,
+			config: conf,
+			env:    env,
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -21,59 +24,29 @@ func NewVersionsCommand(log *logrus.Logger, settings *config.Global) *cobra.Comm
 		Aliases: []string{"list-versions"},
 		Short:   "List the versions available for a tool.",
 		Args:    cobra.ExactArgs(1),
-		PreRunE: func(_ *cobra.Command, _ []string) error {
-			return state.NewCache(opts.log, opts.settings.Root, opts.settings.State).Refresh(true)
-		},
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.tool = args[0]
-			return versions(opts)
+			return opts.versions()
 		},
 	}
 
-	versionFlags(cmd, opts)
+	registerVersionFlags(cmd, opts)
 
 	return cmd
 }
 
-func versionFlags(cmd *cobra.Command, opts *versionOpts) {
+func registerVersionFlags(cmd *cobra.Command, opts *versionOpts) {
 	cmd.Flags().IntVar(&opts.count, "count", 10, "Number of versions to list. The default version will always be printed.")
 }
 
 type versionOpts struct {
-	log      *logrus.Logger
-	settings *config.Global
+	commonOpts
 
 	tool  string
 	count int
 }
 
-func versions(opts *versionOpts) error {
-	s := state.NewCache(opts.log, opts.settings.Root, opts.settings.State)
-
-	recommended, err := s.RecommendedVersion(opts.tool)
-	if err != nil {
-		return err
-	} else if recommended == "" {
-		opts.log.Errorf("No versions available for %q. Did you spell the toolname correctly?", opts.tool)
-		return errFail
-	}
-	fmt.Println(recommended, "(recommended)")
-
-	versions, err := s.AvailableVersions(opts.tool)
-	if err != nil {
-		return err
-	}
-
-	var printCount int
-	for _, version := range versions {
-		if printCount >= opts.count {
-			break
-		}
-
-		if version != recommended {
-			fmt.Println(version)
-			printCount++
-		}
-	}
-	return nil
+func (o *versionOpts) versions() error {
+	// TODO - requires the use of state.
+	return errors.New("not yet implemented")
 }

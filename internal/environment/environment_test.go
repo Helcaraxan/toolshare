@@ -1,4 +1,4 @@
-package config
+package environment
 
 import (
 	"errors"
@@ -26,24 +26,12 @@ func TestMergeEnvironment(t *testing.T) {
 		errType     error
 		sourceCount int
 	}{
-		"ValidGitHubSource": {
-			testfile:    "config_valid_github.yaml",
-			sourceCount: 3,
-		},
-		"ValidURLSource": {
-			testfile:    "config_valid_url.yaml",
-			sourceCount: 4,
-		},
 		"InvalidNonExistentFile": {
 			testfile: "non-existent",
 			errType:  os.ErrNotExist,
 		},
 		"InvalidEmpty": {
 			testfile: "config_invalid_empty.yaml",
-			errType:  ErrInvalidSource,
-		},
-		"InvalidMixedParameters": {
-			testfile: "config_invalid_mixed.yaml",
 			errType:  ErrInvalidSource,
 		},
 		"InvalidGitHubMissingSlug": {
@@ -54,6 +42,30 @@ func TestMergeEnvironment(t *testing.T) {
 			testfile: "config_invalid_github_missing_asset.yaml",
 			errType:  ErrInvalidSource,
 		},
+		"InvalidMixedParameters": {
+			testfile: "config_invalid_mixed.yaml",
+			errType:  ErrInvalidSource,
+		},
+		"ValidFileSystemSource": {
+			testfile:    "config_valid_filesystem.yaml",
+			sourceCount: 1,
+		},
+		"ValidGCSSource": {
+			testfile:    "config_valid_gcs.yaml",
+			sourceCount: 1,
+		},
+		"ValidGitHubSource": {
+			testfile:    "config_valid_github.yaml",
+			sourceCount: 3,
+		},
+		"ValidHTTPSSource": {
+			testfile:    "config_valid_https.yaml",
+			sourceCount: 1,
+		},
+		"ValidS3Source": {
+			testfile:    "config_valid_s3.yaml",
+			sourceCount: 1,
+		},
 	}
 
 	for name := range testcases {
@@ -63,13 +75,6 @@ func TestMergeEnvironment(t *testing.T) {
 
 			env := &Environment{Sources: map[string]Source{}}
 			err := mergeEnvironment(env, filepath.Join("testdata", testcase.testfile))
-			if err == nil {
-				for _, source := range env.Sources {
-					if err == nil {
-						err = source.Validate()
-					}
-				}
-			}
 			if testcase.errType != nil {
 				require.Error(t, err)
 				assert.True(t, errors.Is(err, testcase.errType), "error %q should be of type %q", err, testcase.errType)
@@ -79,25 +84,6 @@ func TestMergeEnvironment(t *testing.T) {
 			}
 		})
 	}
-}
-
-func TestMergeForcePin(t *testing.T) {
-	t.Parallel()
-
-	testDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "child.yaml"), []byte("---\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "parent.yaml"), []byte("---\nenforce_pins: true\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "ancestor.yaml"), []byte("---\nenforce_pins: false\n"), 0o644))
-
-	env := &Environment{
-		Pins:    map[string]string{},
-		Sources: map[string]Source{},
-	}
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "child.yaml")))
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "parent.yaml")))
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "ancestor.yaml")))
-
-	assert.True(t, env.EnforcePins)
 }
 
 func TestMergePins(t *testing.T) {
@@ -126,24 +112,16 @@ func TestMergeSources(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(testDir, "child.yaml"), []byte(`---
 sources:
   b:
-    type: local
-    url:
-      url_template: child
+    https_url_template: child
   c:
-    type: local
-    url:
-      url_template: child
+    https_url_template: child
 `), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(testDir, "parent.yaml"), []byte(`---
 sources:
   a:
-    type: local
-    url:
-      url_template: parent
+    https_url_template: parent
   b:
-    type: local
-    url:
-      url_template: parent
+    https_url_template: parent
 `), 0o644))
 
 	env := &Environment{
@@ -153,7 +131,7 @@ sources:
 	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "child.yaml")))
 	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "parent.yaml")))
 
-	assert.Equal(t, "parent", env.Sources["a"].URL.URLTemplate)
-	assert.Equal(t, "child", env.Sources["b"].URL.URLTemplate)
-	assert.Equal(t, "child", env.Sources["c"].URL.URLTemplate)
+	assert.Equal(t, "parent", env.Sources["a"].HTTPSURLTemplate)
+	assert.Equal(t, "child", env.Sources["b"].HTTPSURLTemplate)
+	assert.Equal(t, "child", env.Sources["c"].HTTPSURLTemplate)
 }

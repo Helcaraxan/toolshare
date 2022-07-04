@@ -6,23 +6,23 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-type httpState struct {
+type http struct {
 	Root string
 	URL  string
 }
 
-func (s *httpState) Fetch(target billy.Filesystem) error {
+func (s *http) Fetch(target billy.Filesystem) error {
 	return nil
 }
 
-func (s *httpState) RecommendVersion(binary tool.Binary) error {
+func (s *http) RecommendVersion(binary tool.Binary) error {
 	return nil
 }
 
-func (s *httpState) AddVersions(binaries ...tool.Binary) error {
+func (s *http) AddVersions(binaries ...tool.Binary) error {
 	return nil
 }
 
-func (s *httpState) DeleteVersions(binaries ...tool.Binary) error {
+func (s *http) DeleteVersions(binaries ...tool.Binary) error {
 	return nil
 }

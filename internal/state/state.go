@@ -13,11 +13,11 @@ import (
 
 var (
 	// To guarantee that implementations remain compatible with the interface.
-	_ Cache = &localState{}
+	_ Cache = &fileSystem{}
 
-	_ State = &gitState{}
-	_ State = &httpState{}
-	_ State = &localState{}
+	_ State = &git{}
+	_ State = &http{}
+	_ State = &fileSystem{}
 )
 
 type Cache interface {
@@ -35,14 +35,14 @@ type State interface {
 }
 
 func NewCache(log *logrus.Logger, localRoot string, settings *config.State) Cache {
-	cache := &localState{
+	cache := &fileSystem{
 		log:             log,
 		refreshInterval: settings.RefreshInterval,
 		storage:         osfs.New(localRoot),
 	}
 
 	if settings.Local != "" {
-		cache.remote = &localState{
+		cache.remote = &fileSystem{
 			log:     log,
 			storage: osfs.New(settings.Local),
 		}

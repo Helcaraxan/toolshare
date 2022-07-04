@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/sirupsen/logrus"
@@ -14,31 +14,31 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-type gitState struct {
+type git struct {
 	log *logrus.Logger
 	url string
 }
 
-func (s *gitState) Fetch(target billy.Filesystem) error {
+func (s *git) Fetch(target billy.Filesystem) error {
 	_, state, err := s.createLocalCheckout()
 	if err != nil {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
 	return tempState.Fetch(target)
 }
 
-func (s *gitState) RecommendVersion(binary tool.Binary) error {
+func (s *git) RecommendVersion(binary tool.Binary) error {
 	repo, state, err := s.createLocalCheckout()
 	if err != nil {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -49,7 +49,7 @@ func (s *gitState) RecommendVersion(binary tool.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Recommend version %q for %q.", binary.Version, binary.Tool))
 }
 
-func (s *gitState) AddVersions(binaries ...tool.Binary) error {
+func (s *git) AddVersions(binaries ...tool.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}
@@ -59,7 +59,7 @@ func (s *gitState) AddVersions(binaries ...tool.Binary) error {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -76,7 +76,7 @@ func (s *gitState) AddVersions(binaries ...tool.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Added tool versions.\n%v", msgElts))
 }
 
-func (s *gitState) DeleteVersions(binaries ...tool.Binary) error {
+func (s *git) DeleteVersions(binaries ...tool.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (s *gitState) DeleteVersions(binaries ...tool.Binary) error {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -103,11 +103,11 @@ func (s *gitState) DeleteVersions(binaries ...tool.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Deleted tool versions.\n%v", msgElts))
 }
 
-func (s *gitState) createLocalCheckout() (repo *git.Repository, state billy.Filesystem, err error) {
+func (s *git) createLocalCheckout() (repo *gogit.Repository, state billy.Filesystem, err error) {
 	storage := memory.NewStorage()
 	state = memfs.New()
 
-	repo, err = git.Clone(storage, state, &git.CloneOptions{
+	repo, err = gogit.Clone(storage, state, &gogit.CloneOptions{
 		URL:           s.url,
 		ReferenceName: plumbing.Master,
 		SingleBranch:  true,
@@ -120,24 +120,24 @@ func (s *gitState) createLocalCheckout() (repo *git.Repository, state billy.File
 	return repo, state, nil
 }
 
-func (s *gitState) commitAndPush(repo *git.Repository, message string) error {
+func (s *git) commitAndPush(repo *gogit.Repository, message string) error {
 	wt, err := repo.Worktree()
 	if err != nil {
 		s.log.WithError(err).Error("Failed to determine the git worktree.")
 		return err
 	}
 
-	if err = wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
+	if err = wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
 		s.log.WithError(err).Error("Failed to stage all modified state files.")
 		return err
 	}
 
-	if _, err = wt.Commit(message, &git.CommitOptions{}); err != nil {
+	if _, err = wt.Commit(message, &gogit.CommitOptions{}); err != nil {
 		s.log.WithError(err).Error("Failed to commit modified state files.")
 		return err
 	}
 
-	if err = repo.Push(&git.PushOptions{}); err != nil {
+	if err = repo.Push(&gogit.PushOptions{}); err != nil {
 		s.log.WithError(err).Error("Failed to push state file changes to the remote state.")
 		return err
 	}

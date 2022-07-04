@@ -1,3 +1,0 @@
-sources:
-  errenous-config:
-    url_template: scheme://test-tool/{os}-{arch}-{version}{exe}

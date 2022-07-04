@@ -12,16 +12,18 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
-	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/state"
+	"github.com/Helcaraxan/toolshare/internal/environment"
 	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-func NewInvokeCommand(log *logrus.Logger, settings *config.Global) *cobra.Command {
+func Invoke(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
 	opts := &invokeOptions{
-		log:      log,
-		settings: settings,
+		commonOpts: commonOpts{
+			log:    log,
+			config: conf,
+			env:    env,
+		},
 	}
 
 	cmd := &cobra.Command{
@@ -33,35 +35,57 @@ about how the current environment is determined please see '%s env --help'.`, co
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.tool = args[0]
 			opts.args = args[1:]
-			return invoke(opts)
+			return opts.invoke()
 		},
 	}
+
+	registerInvokeFlags(cmd, opts)
 
 	return cmd
 }
 
 type invokeOptions struct {
-	log      *logrus.Logger
-	settings *config.Global
+	commonOpts
 
-	tool string
-	args []string
+	tool    string
+	version string
+	args    []string
+}
+
+func registerInvokeFlags(cmd *cobra.Command, opts *invokeOptions) {
+	cmd.Flags().StringVar(&opts.tool, "tool", "", "Name of the tool to be invoked.")
+	cmd.Flags().StringVar(&opts.version, "version", "", "Override the version of the tool that should be used. Is normally determined from the environment.")
+
+	_ = cmd.MarkFlagRequired("tool")
 }
 
 const invokeExitCode = 128 // Used to differentiate from exit codes from an invoked process.
 
-func invoke(opts *invokeOptions) error {
-	version, err := invokeToolVersion(opts)
+func (o *invokeOptions) invoke() error {
+	tools, err := o.knownTools()
 	if err != nil {
 		return err
 	}
+	t, ok := tools[o.tool]
+	if !ok {
+		o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
+		os.Exit(invokeExitCode)
+	}
 
-	path, err := backend.NewCache(opts.log, opts.settings.Root, opts.settings.Storage).Get(tool.Binary{
-		Tool:     opts.tool,
-		Version:  version,
-		Platform: tool.Platform(runtime.GOOS),
-		Arch:     tool.Arch(runtime.GOARCH),
-	})
+	// Ensure we have the tool available to run.
+	dl := &downloadOptions{
+		commonOpts: o.commonOpts,
+		tool:       t.Tool,
+		version:    t.Version,
+		platforms:  []string{string(tool.CurrentPlatform())},
+		archs:      []string{string(tool.CurrentArch())},
+	}
+	local, remote, source, err := dl.setupBackends()
+	if err != nil {
+		o.log.Errorf("Unable to fetch tool: %v", err)
+		os.Exit(invokeExitCode)
+	}
+	path, err := dl.getToolBinary(local, remote, source, t)
 	if err != nil {
 		return err
 	}
@@ -70,20 +94,20 @@ func invoke(opts *invokeOptions) error {
 	// target binary one. However... this is not cross-platform compatible as this pattern is not
 	// supported on Windows. Hence we need to a more complex jiggle to ensure that signals are
 	// forwarded, etc.
-	cmd := exec.Command(path, opts.args...)
+	cmd := exec.Command(path, o.args...)
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 
 	done := make(chan struct{})
 	sigs := make(chan os.Signal, 1)
-	go invokeSignalForwarder(opts.log, cmd, sigs, done)
+	go invokeSignalForwarder(o.log, cmd, sigs, done)
 
 	signal.Notify(sigs)
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if !errors.As(err, &exitErr) {
-			opts.log.WithError(err).Errorf("Failed to invoke the target binary %q.", path)
+			o.log.WithError(err).Errorf("Failed to invoke the target binary %q.", path)
 			os.Exit(invokeExitCode)
 			return err
 		}
@@ -92,37 +116,9 @@ func invoke(opts *invokeOptions) error {
 	close(done) // This should result in an os.Exit() call from the signal forwarder.
 
 	time.Sleep(1 * time.Second)
-	opts.log.Errorf("Unexpected failure to exit %q.", config.DriverName)
+	o.log.Errorf("Unexpected failure to exit %q.", config.DriverName)
 	os.Exit(invokeExitCode)
 	return nil
-}
-
-func invokeToolVersion(opts *invokeOptions) (string, error) {
-	if pin, ok := envPinnedTools(opts.log)[opts.tool]; ok {
-		return pin.version, nil
-	}
-
-	if opts.settings.DisallowUnpinned {
-		opts.log.Errorf(
-			"Can not invoke %q as there is no pinned version and unpinned tools are actively prohibited in the current settings.",
-			opts.tool,
-		)
-		return "", errFail
-	}
-
-	s := state.NewCache(opts.log, opts.settings.Root, opts.settings.State)
-	if err := s.Refresh(false); err != nil {
-		return "", err
-	}
-
-	version, err := s.RecommendedVersion(opts.tool)
-	if err != nil {
-		return "", err
-	} else if version == "" {
-		opts.log.Errorf("Can not invoke %q as there is no pinned version and no default version registered in the global state.", opts.tool)
-		return "", errFail
-	}
-	return version, nil
 }
 
 func invokeSignalForwarder(log *logrus.Logger, cmd *exec.Cmd, sigs chan os.Signal, done chan struct{}) {

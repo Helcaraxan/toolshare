@@ -2,6 +2,7 @@ package tool
 
 import (
 	"fmt"
+	"runtime"
 )
 
 type Binary struct {
@@ -31,3 +32,31 @@ const (
 	ArchX86   Arch = "x86"
 	ArchX64   Arch = "x86_64"
 )
+
+func CurrentPlatform() Platform {
+	switch runtime.GOOS {
+	case "darwin":
+		return PlatformDarwin
+	case "linux":
+		return PlatformLinux
+	case "windows":
+		return PlatformWindows
+	default:
+		panic("unsupported GOOS " + runtime.GOOS)
+	}
+}
+
+func CurrentArch() Arch {
+	switch runtime.GOARCH {
+	case "386":
+		return ArchX86
+	case "amd64":
+		return ArchX64
+	case "arm":
+		return ArchARM32
+	case "arm64":
+		return ArchARM64
+	default:
+		panic("unsupported GOARCH " + runtime.GOARCH)
+	}
+}

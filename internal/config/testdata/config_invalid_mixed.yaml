@@ -1,7 +1,0 @@
-sources:
-  unsupported-scheme:
-    type: github
-    github:
-      slug: repo/tool
-    url:
-      url_template: scheme://test-tool/{os}-{arch}-{version}{exe}

@@ -18,14 +18,14 @@ import (
 
 const cacheStatusFile = "cache.status.yaml"
 
-type localState struct {
+type fileSystem struct {
 	log             *logrus.Logger
 	refreshInterval time.Duration
 	remote          State
 	storage         billy.Filesystem
 }
 
-func (s *localState) AvailableTools() ([]string, error) {
+func (s *fileSystem) AvailableTools() ([]string, error) {
 	if err := s.Refresh(false); err != nil {
 		s.log.WithError(err).Warn("Failed to refresh state cache.")
 	}
@@ -48,7 +48,7 @@ func (s *localState) AvailableTools() ([]string, error) {
 	return tools, nil
 }
 
-func (s *localState) AvailableVersions(toolName string) ([]string, error) {
+func (s *fileSystem) AvailableVersions(toolName string) ([]string, error) {
 	if err := s.Refresh(false); err != nil {
 		s.log.WithError(err).Warn("Failed to refresh state cache.")
 	}
@@ -62,7 +62,7 @@ func (s *localState) AvailableVersions(toolName string) ([]string, error) {
 	return state.Versions, nil
 }
 
-func (s *localState) RecommendedVersion(toolName string) (string, error) {
+func (s *fileSystem) RecommendedVersion(toolName string) (string, error) {
 	if err := s.Refresh(false); err != nil {
 		s.log.WithError(err).Warn("Failed to refresh state cache.")
 	}
@@ -74,7 +74,7 @@ func (s *localState) RecommendedVersion(toolName string) (string, error) {
 	return state.RecommendedVersion, nil
 }
 
-func (s *localState) Refresh(force bool) error {
+func (s *fileSystem) Refresh(force bool) error {
 	var state refreshState
 
 	stateFile, err := s.storage.OpenFile(cacheStatusFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0o644)
@@ -120,7 +120,7 @@ func (s *localState) Refresh(force bool) error {
 	return nil
 }
 
-func (s *localState) Fetch(target billy.Filesystem) error {
+func (s *fileSystem) Fetch(target billy.Filesystem) error {
 	stateFiles, err := s.storage.ReadDir("/")
 	if err != nil {
 		s.log.WithError(err).Error("Unable to read the state folder.")
@@ -167,7 +167,7 @@ func (s *localState) Fetch(target billy.Filesystem) error {
 	return nil
 }
 
-func (s *localState) RecommendVersion(binary tool.Binary) error {
+func (s *fileSystem) RecommendVersion(binary tool.Binary) error {
 	state, err := s.readToolState(binary.Tool)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func (s *localState) RecommendVersion(binary tool.Binary) error {
 	return s.writeToolState(binary.Tool, state)
 }
 
-func (s *localState) AddVersions(binaries ...tool.Binary) error {
+func (s *fileSystem) AddVersions(binaries ...tool.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {
@@ -206,7 +206,7 @@ func (s *localState) AddVersions(binaries ...tool.Binary) error {
 	return nil
 }
 
-func (s *localState) DeleteVersions(binaries ...tool.Binary) error {
+func (s *fileSystem) DeleteVersions(binaries ...tool.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {
@@ -227,7 +227,7 @@ func (s *localState) DeleteVersions(binaries ...tool.Binary) error {
 	return nil
 }
 
-func (s *localState) readToolState(toolName string) (*toolState, error) {
+func (s *fileSystem) readToolState(toolName string) (*toolState, error) {
 	stateFile, err := s.storage.Open(toolName + ".yaml")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -253,7 +253,7 @@ func (s *localState) readToolState(toolName string) (*toolState, error) {
 	return &state, nil
 }
 
-func (s *localState) writeToolState(toolName string, state *toolState) error {
+func (s *fileSystem) writeToolState(toolName string, state *toolState) error {
 	stateContent, err := yaml.Marshal(state)
 	if err != nil {
 		s.log.WithError(err).Error("Failed to marshal new state file content.")
