@@ -6,12 +6,11 @@ import (
 	"io"
 	"os"
 
+	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
 	"github.com/go-git/go-billy/v5/osfs"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type FileSystemConfig struct {
@@ -43,7 +42,7 @@ func NewFileSystem(log *logrus.Logger, c *FileSystemConfig, inMem bool) *FileSys
 	}
 }
 
-func (s *FileSystem) Path(b tool.Binary) (string, error) {
+func (s *FileSystem) Path(b config.Binary) (string, error) {
 	localPath := s.instantiateTemplate(b, s.FilePathTemplate)
 	if _, err := s.storage.Stat(localPath); errors.Is(err, os.ErrNotExist) {
 		return "", ErrNotFound
@@ -54,7 +53,7 @@ func (s *FileSystem) Path(b tool.Binary) (string, error) {
 	return localPath, nil
 }
 
-func (s *FileSystem) Fetch(b tool.Binary) ([]byte, error) {
+func (s *FileSystem) Fetch(b config.Binary) ([]byte, error) {
 	p := s.instantiateTemplate(b, s.FilePathTemplate)
 	raw, err := os.ReadFile(p)
 	if err != nil {
@@ -63,7 +62,7 @@ func (s *FileSystem) Fetch(b tool.Binary) ([]byte, error) {
 	return s.extractFromArchive(raw, p, b)
 }
 
-func (s *FileSystem) Store(b tool.Binary, content []byte) error {
+func (s *FileSystem) Store(b config.Binary, content []byte) error {
 	localPath := s.instantiateTemplate(b, s.FilePathTemplate)
 	if _, err := s.storage.Stat(localPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		s.log.WithError(err).Errorf("Unable to check for the presence of %v.", b)

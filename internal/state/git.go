@@ -11,7 +11,7 @@ import (
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/sirupsen/logrus"
 
-	"github.com/Helcaraxan/toolshare/internal/tool"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type git struct {
@@ -32,7 +32,7 @@ func (s *git) Fetch(target billy.Filesystem) error {
 	return tempState.Fetch(target)
 }
 
-func (s *git) RecommendVersion(binary tool.Binary) error {
+func (s *git) RecommendVersion(binary config.Binary) error {
 	repo, state, err := s.createLocalCheckout()
 	if err != nil {
 		return err
@@ -49,7 +49,7 @@ func (s *git) RecommendVersion(binary tool.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Recommend version %q for %q.", binary.Version, binary.Tool))
 }
 
-func (s *git) AddVersions(binaries ...tool.Binary) error {
+func (s *git) AddVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}
@@ -76,7 +76,7 @@ func (s *git) AddVersions(binaries ...tool.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Added tool versions.\n%v", msgElts))
 }
 
-func (s *git) DeleteVersions(binaries ...tool.Binary) error {
+func (s *git) DeleteVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}

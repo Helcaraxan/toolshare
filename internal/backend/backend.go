@@ -11,17 +11,17 @@ import (
 	"io/fs"
 	"strings"
 
-	"github.com/Helcaraxan/toolshare/internal/tool"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type Storage interface {
-	Fetch(binary tool.Binary) ([]byte, error)
-	Store(binary tool.Binary, content []byte) error
+	Fetch(binary config.Binary) ([]byte, error)
+	Store(binary config.Binary, content []byte) error
 }
 
 type BinaryProvider interface {
 	Storage
-	Path(binary tool.Binary) (string, error)
+	Path(binary config.Binary) (string, error)
 }
 
 var (
@@ -57,7 +57,7 @@ type TemplateMappings struct {
 	X8664 *string `yaml:"x86_64"`
 }
 
-func (c *CommonConfig) instantiateTemplate(b tool.Binary, tmpl string) string {
+func (c *CommonConfig) instantiateTemplate(b config.Binary, tmpl string) string {
 	return strings.NewReplacer(
 		"arch", c.arch(b),
 		"bin", c.exe(b),
@@ -67,63 +67,63 @@ func (c *CommonConfig) instantiateTemplate(b tool.Binary, tmpl string) string {
 	).Replace(tmpl)
 }
 
-func (c *CommonConfig) platform(b tool.Binary) string {
+func (c *CommonConfig) platform(b config.Binary) string {
 	switch b.Platform {
-	case tool.PlatformDarwin:
+	case config.PlatformDarwin:
 		if c.Mappings.Darwin != nil {
 			return *c.Mappings.Darwin
 		}
-		return string(tool.PlatformDarwin)
-	case tool.PlatformLinux:
+		return string(config.PlatformDarwin)
+	case config.PlatformLinux:
 		if c.Mappings.Linux != nil {
 			return *c.Mappings.Linux
 		}
-		return string(tool.PlatformLinux)
-	case tool.PlatformWindows:
+		return string(config.PlatformLinux)
+	case config.PlatformWindows:
 		if c.Mappings.Windows != nil {
 			return *c.Mappings.Windows
 		}
-		return string(tool.PlatformWindows)
+		return string(config.PlatformWindows)
 	default:
 		return string(b.Platform)
 	}
 }
 
-func (c *CommonConfig) arch(b tool.Binary) string {
+func (c *CommonConfig) arch(b config.Binary) string {
 	switch b.Arch {
-	case tool.ArchARM32:
+	case config.ArchARM32:
 		if c.Mappings.ARM32 != nil {
 			return *c.Mappings.ARM32
 		}
-		return string(tool.ArchARM32)
-	case tool.ArchARM64:
+		return string(config.ArchARM32)
+	case config.ArchARM64:
 		if c.Mappings.ARM64 != nil {
 			return *c.Mappings.ARM64
 		}
-		return string(tool.ArchARM64)
-	case tool.ArchX64:
+		return string(config.ArchARM64)
+	case config.ArchX64:
 		if c.Mappings.X8664 != nil {
 			return *c.Mappings.X8664
 		}
-		return string(tool.ArchX64)
-	case tool.ArchX86:
+		return string(config.ArchX64)
+	case config.ArchX86:
 		if c.Mappings.X86 != nil {
 			return *c.Mappings.X86
 		}
-		return string(tool.ArchX86)
+		return string(config.ArchX86)
 	default:
 		return string(b.Arch)
 	}
 }
 
-func (c *CommonConfig) exe(b tool.Binary) string {
-	if b.Platform == tool.PlatformWindows {
+func (c *CommonConfig) exe(b config.Binary) string {
+	if b.Platform == config.PlatformWindows {
 		return ".exe"
 	}
 	return ""
 }
 
-func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b tool.Binary) ([]byte, error) {
+func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b config.Binary) ([]byte, error) {
 	if c.ArchivePathTemplate == "" {
 		return srcRaw, nil
 	}

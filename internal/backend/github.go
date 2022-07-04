@@ -9,10 +9,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/google/go-github/v43/github"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type GitHubConfig struct {
@@ -38,7 +37,7 @@ func NewGitHub(log *logrus.Logger, c *GitHubConfig) *GitHub {
 	}
 }
 
-func (s *GitHub) Fetch(b tool.Binary) ([]byte, error) {
+func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	assetName, buf, err := s.getReleaseAsset(b)
 	if err != nil {
 		return nil, err
@@ -46,12 +45,12 @@ func (s *GitHub) Fetch(b tool.Binary) ([]byte, error) {
 	return s.extractFromArchive(buf.Bytes(), assetName, b)
 }
 
-func (s *GitHub) Store(_ tool.Binary, _ []byte) error {
+func (s *GitHub) Store(_ config.Binary, _ []byte) error {
 	s.log.Error("Cannot perform 'store' operations on a GitHub backend.")
 	return errFailed
 }
 
-func (s *GitHub) getReleaseAsset(b tool.Binary) (name string, content *bytes.Buffer, err error) {
+func (s *GitHub) getReleaseAsset(b config.Binary) (name string, content *bytes.Buffer, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 

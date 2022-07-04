@@ -8,9 +8,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
+	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type GCSConfig struct {
@@ -35,7 +34,7 @@ func NewGCS(log *logrus.Logger, c *GCSConfig) *GCS {
 	}
 }
 
-func (s *GCS) Fetch(b tool.Binary) ([]byte, error) {
+func (s *GCS) Fetch(b config.Binary) ([]byte, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 
@@ -65,7 +64,7 @@ func (s *GCS) Fetch(b tool.Binary) ([]byte, error) {
 	return s.extractFromArchive(raw, bucketPath, b)
 }
 
-func (s *GCS) Store(b tool.Binary, content []byte) error {
+func (s *GCS) Store(b config.Binary, content []byte) error {
 	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 

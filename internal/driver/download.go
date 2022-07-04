@@ -1,4 +1,4 @@
-package driver
+package main
 
 import (
 	"errors"
@@ -14,10 +14,9 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/environment"
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-func Download(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
+func Download(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
 	opts := &downloadOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -62,13 +61,13 @@ type downloadOptions struct {
 }
 
 func (o downloadOptions) download() error {
-	var archs []tool.Arch
-	var platforms []tool.Platform
+	var archs []config.Arch
+	var platforms []config.Platform
 	for _, a := range o.archs {
-		archs = append(archs, tool.Arch(a))
+		archs = append(archs, config.Arch(a))
 	}
 	for _, p := range o.platforms {
-		platforms = append(platforms, tool.Platform(p))
+		platforms = append(platforms, config.Platform(p))
 	}
 
 	if o.version == "" {
@@ -91,7 +90,7 @@ func (o downloadOptions) download() error {
 	var errs []error
 	for _, platform := range platforms {
 		for _, arch := range archs {
-			b := tool.Binary{
+			b := config.Binary{
 				Tool:     o.tool,
 				Version:  o.version,
 				Platform: platform,
@@ -115,7 +114,7 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{os}", "{arch}", "{tool}{exe}"}
 
 	local = backend.NewFileSystem(o.log, &backend.FileSystemConfig{
-		FilePathTemplate: filepath.Join(append([]string{o.config.Root}, cacheURLTemplate...)...),
+		FilePathTemplate: filepath.Join(append([]string{config.GetStorageDir()}, cacheURLTemplate...)...),
 	}, false)
 
 	if o.config.RemoteCache != nil {
@@ -143,12 +142,14 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 		}
 	}
 
-	source = o.env.Source(o.log, o.tool)
+	if !o.config.DisableSources {
+		source = o.env.Source(o.log, o.tool)
+	}
 
 	return local, remote, source, nil
 }
 
-func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote backend.Storage, source backend.Storage, b tool.Binary) (string, error) {
+func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote backend.Storage, source backend.Storage, b config.Binary) (string, error) {
 	p, err := local.Path(b)
 	if err == nil {
 		return p, nil

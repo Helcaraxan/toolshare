@@ -1,4 +1,4 @@
-package driver
+package main
 
 import (
 	"errors"
@@ -14,10 +14,9 @@ import (
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/environment"
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
-func Invoke(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
+func Invoke(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
 	opts := &invokeOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -77,8 +76,8 @@ func (o *invokeOptions) invoke() error {
 		commonOpts: o.commonOpts,
 		tool:       t.Tool,
 		version:    t.Version,
-		platforms:  []string{string(tool.CurrentPlatform())},
-		archs:      []string{string(tool.CurrentArch())},
+		platforms:  []string{string(config.CurrentPlatform())},
+		archs:      []string{string(config.CurrentArch())},
 	}
 	local, remote, source, err := dl.setupBackends()
 	if err != nil {

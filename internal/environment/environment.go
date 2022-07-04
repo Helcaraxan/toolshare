@@ -2,6 +2,8 @@ package environment
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -12,57 +14,56 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
+var envFileName = fmt.Sprintf("%s.yaml", config.DriverName)
+
 type Environment struct {
 	Pins    map[string]string `yaml:"pins"`
 	Sources map[string]Source `yaml:"sources"`
 }
 
-func GetEnvironment() (*Environment, error) {
-	env := &Environment{
-		Pins:    map[string]string{},
-		Sources: map[string]Source{},
+func GetEnvironment(env *Environment) error {
+	if env == nil {
+		return errors.New("can not parse environment into nil struct")
 	}
+	env.Pins = map[string]string{}
+	env.Sources = map[string]Source{}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	var candidatePaths []string
 	for {
-		path := filepath.Join(cwd, "toolshare.yaml")
-		if _, err = os.Stat(path); err == nil {
-			if err = mergeEnvironment(env, path); err != nil {
-				return nil, err
-			}
-		} else if !os.IsNotExist(err) {
-			return nil, err
-		}
+		candidatePaths = append(candidatePaths, filepath.Join(cwd, envFileName))
 		if cwd == filepath.Dir(cwd) {
 			break
 		}
 		cwd = filepath.Dir(cwd)
 	}
+	candidatePaths = append(candidatePaths, config.GetConfigDirs()...)
 
-	path := filepath.Join(config.GetLocalStorageRoot(), "global.yaml")
-	if _, err = os.Stat(path); err == nil {
-		if err = mergeEnvironment(env, path); err != nil {
-			return nil, err
+	for _, p := range candidatePaths {
+		var raw []byte
+		raw, err = os.ReadFile(filepath.Join(p, envFileName))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
 		}
-	} else if !os.IsNotExist(err) {
-		return nil, err
+		if err := mergeEnvironment(env, raw); err != nil {
+			return err
+		}
 	}
-	return env, nil
+	return nil
 }
 
-func mergeEnvironment(env *Environment, path string) error {
-	envRaw, err := os.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	dec := yaml.NewDecoder(bytes.NewReader(envRaw))
+func mergeEnvironment(env *Environment, content []byte) error {
+	dec := yaml.NewDecoder(bytes.NewReader(content))
 	dec.KnownFields(true)
 
 	newEnv := Environment{Sources: map[string]Source{}}
-	if err = dec.Decode(&newEnv); err != nil {
+	if err := dec.Decode(&newEnv); err != nil {
 		return err
 	}
 

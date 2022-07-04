@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 var (
@@ -29,9 +28,9 @@ type Cache interface {
 
 type State interface {
 	Fetch(target billy.Filesystem) error
-	RecommendVersion(binary tool.Binary) error
-	AddVersions(binaries ...tool.Binary) error
-	DeleteVersions(binaries ...tool.Binary) error
+	RecommendVersion(binary config.Binary) error
+	AddVersions(binaries ...config.Binary) error
+	DeleteVersions(binaries ...config.Binary) error
 }
 
 func NewCache(log *logrus.Logger, localRoot string, settings *config.State) Cache {

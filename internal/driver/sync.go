@@ -1,4 +1,4 @@
-package driver
+package main
 
 import (
 	"errors"
@@ -14,7 +14,6 @@ import (
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/environment"
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 const (
@@ -22,7 +21,7 @@ const (
 	syncModeShim  = "shim"
 )
 
-func Sync(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
+func Sync(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
 	opts := &syncOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -79,10 +78,6 @@ func (o *syncOptions) sync() error {
 		return fmt.Errorf("unknown sync mode %q", o.mode)
 	}
 
-	if err := o.syncInitShimFolder(); err != nil {
-		return err
-	}
-
 	knownTools, err := o.commonOpts.knownTools()
 	if err != nil {
 		return err
@@ -93,6 +88,14 @@ func (o *syncOptions) sync() error {
 			o.tools = append(o.tools, name)
 		}
 		o.log.Debug("No tools were specified. Subscribing to all tools registered in the current environment.")
+	}
+	if len(o.tools) == 0 {
+		o.log.Warn("No shims were written as no tools are registered in the current environment.")
+		return nil
+	}
+
+	if err = o.syncInitShimFolder(); err != nil {
+		return err
 	}
 
 	var errs []error
@@ -119,8 +122,8 @@ func (o *syncOptions) sync() error {
 			commonOpts: o.commonOpts,
 			tool:       name,
 			version:    b.Version,
-			platforms:  []string{string(tool.CurrentPlatform())},
-			archs:      []string{string(tool.CurrentArch())},
+			platforms:  []string{string(config.CurrentPlatform())},
+			archs:      []string{string(config.CurrentArch())},
 		}
 		if err := dl.download(); err != nil {
 			return err
@@ -130,7 +133,7 @@ func (o *syncOptions) sync() error {
 }
 
 func (o *syncOptions) syncInitShimFolder() error {
-	subscriptionsPath := filepath.Join(o.config.Root, o.subscriptionFolder())
+	subscriptionsPath := o.subscriptionDir()
 	if _, err := os.Stat(subscriptionsPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			o.log.WithError(err).Error("Could not assert existence of subscriptions folder.")
@@ -148,7 +151,6 @@ func (o *syncOptions) syncInitShimFolder() error {
 			return nil
 		}
 	}
-
 	o.log.Warnf(
 		"Please add %q to your 'PATH' environment variable, preferably at the front, to start using new subscriptions.",
 		subscriptionsPath,
@@ -156,7 +158,7 @@ func (o *syncOptions) syncInitShimFolder() error {
 	return nil
 }
 
-func (o *syncOptions) syncCreateShim(b tool.Binary) error {
+func (o *syncOptions) syncCreateShim(b config.Binary) error {
 	const (
 		cmdShimTemplate = `@ECHO OFF
 %s invoke --tool=%s -- %%*
@@ -165,8 +167,6 @@ func (o *syncOptions) syncCreateShim(b tool.Binary) error {
 %s invoke --tool=%s -- "$@"
 `
 	)
-
-	shimPath := filepath.Join(o.config.Root, o.subscriptionFolder())
 
 	invoker := config.DriverName
 	if b.Tool == config.DriverName {
@@ -186,8 +186,6 @@ func (o *syncOptions) syncCreateShim(b tool.Binary) error {
 			return err
 		}
 	}
-
-	o.log.Infof("Wrote the subscription shim for %q to %q.", b.Tool, shimPath)
 	return nil
 }
 
@@ -203,9 +201,9 @@ func (o *syncOptions) syncCreateShim(b tool.Binary) error {
 // to point to the old content while any new file descriptors will appropriately read the new
 // content.
 func (o *syncOptions) syncWriteShim(name string, content string) error {
-	shimFolder := o.subscriptionFolder()
+	shimDir := o.subscriptionDir()
 
-	shim, err := ioutil.TempFile(shimFolder, name)
+	shim, err := ioutil.TempFile(shimDir, name)
 	if err != nil {
 		o.log.WithError(err).Errorf("Failed to open a temporary file to write shim for tool %q.", name)
 		return err
@@ -222,9 +220,14 @@ func (o *syncOptions) syncWriteShim(name string, content string) error {
 		return err
 	}
 
-	if err = os.Rename(shim.Name(), filepath.Join(shimFolder, name)); err != nil {
+	if err = os.Rename(shim.Name(), filepath.Join(shimDir, name)); err != nil {
 		o.log.WithError(err).Error("Unable to move temporary shim file to final path.")
 		return err
 	}
+	o.log.Debugf("Wrote the subscription shim for %q to %q", name, filepath.Join(shimDir, name))
 	return nil
+}
+
+func (o *syncOptions) subscriptionDir() string {
+	return filepath.Join(config.GetUserConfigDir(), "subscriptions")
 }

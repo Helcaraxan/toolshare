@@ -1,4 +1,4 @@
-package driver
+package main
 
 import (
 	"errors"
@@ -10,7 +10,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Versions(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
+func Versions(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
 	opts := &versionOpts{
 		commonOpts: commonOpts{
 			log:    log,
@@ -22,7 +22,7 @@ func Versions(log *logrus.Logger, conf config.Global, env environment.Environmen
 	cmd := &cobra.Command{
 		Use:     "versions <tool> [--count=<n>]",
 		Aliases: []string{"list-versions"},
-		Short:   "List the versions available for a tool.",
+		Short:   "List the versions available for a config.",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			opts.tool = args[0]

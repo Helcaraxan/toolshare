@@ -13,7 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
-	"github.com/Helcaraxan/toolshare/internal/tool"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 const cacheStatusFile = "cache.status.yaml"
@@ -167,7 +167,7 @@ func (s *fileSystem) Fetch(target billy.Filesystem) error {
 	return nil
 }
 
-func (s *fileSystem) RecommendVersion(binary tool.Binary) error {
+func (s *fileSystem) RecommendVersion(binary config.Binary) error {
 	state, err := s.readToolState(binary.Tool)
 	if err != nil {
 		return err
@@ -178,7 +178,7 @@ func (s *fileSystem) RecommendVersion(binary tool.Binary) error {
 	return s.writeToolState(binary.Tool, state)
 }
 
-func (s *fileSystem) AddVersions(binaries ...tool.Binary) error {
+func (s *fileSystem) AddVersions(binaries ...config.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {
@@ -206,7 +206,7 @@ func (s *fileSystem) AddVersions(binaries ...tool.Binary) error {
 	return nil
 }
 
-func (s *fileSystem) DeleteVersions(binaries ...tool.Binary) error {
+func (s *fileSystem) DeleteVersions(binaries ...config.Binary) error {
 	for _, binary := range binaries {
 		state, err := s.readToolState(binary.Tool)
 		if err != nil {

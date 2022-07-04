@@ -4,9 +4,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type HTTPSConfig struct {
@@ -30,10 +29,10 @@ func NewHTTPS(log *logrus.Logger, c *HTTPSConfig) *HTTPS {
 	}
 }
 
-func (s *HTTPS) Fetch(b tool.Binary) ([]byte, error) {
+func (s *HTTPS) Fetch(b config.Binary) ([]byte, error) {
 	return nil, errors.New("not yet implemented")
 }
 
-func (s *HTTPS) Store(b tool.Binary, content []byte) error {
+func (s *HTTPS) Store(b config.Binary, content []byte) error {
 	return errors.New("not yet implemented")
 }

@@ -14,7 +14,11 @@ func TestParseErroneousConfigSyntax(t *testing.T) {
 	t.Parallel()
 
 	env := &Environment{Sources: map[string]Source{}}
-	err := mergeEnvironment(env, filepath.Join("testdata", "erroneous_config_syntax.yaml"))
+
+	raw, err := os.ReadFile(filepath.Join("testdata", "erroneous_config_syntax.yaml"))
+	require.NoError(t, err)
+
+	err = mergeEnvironment(env, raw)
 	require.Error(t, err)
 }
 
@@ -26,10 +30,6 @@ func TestMergeEnvironment(t *testing.T) {
 		errType     error
 		sourceCount int
 	}{
-		"InvalidNonExistentFile": {
-			testfile: "non-existent",
-			errType:  os.ErrNotExist,
-		},
 		"InvalidEmpty": {
 			testfile: "config_invalid_empty.yaml",
 			errType:  ErrInvalidSource,
@@ -74,7 +74,11 @@ func TestMergeEnvironment(t *testing.T) {
 			t.Parallel()
 
 			env := &Environment{Sources: map[string]Source{}}
-			err := mergeEnvironment(env, filepath.Join("testdata", testcase.testfile))
+
+			raw, err := os.ReadFile(filepath.Join("testdata", testcase.testfile))
+			require.NoError(t, err)
+
+			err = mergeEnvironment(env, raw)
 			if testcase.errType != nil {
 				require.Error(t, err)
 				assert.True(t, errors.Is(err, testcase.errType), "error %q should be of type %q", err, testcase.errType)
@@ -89,16 +93,12 @@ func TestMergeEnvironment(t *testing.T) {
 func TestMergePins(t *testing.T) {
 	t.Parallel()
 
-	testDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "child.yaml"), []byte("pins:\n  b: child\n  c: child\n"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "parent.yaml"), []byte("pins:\n  a: parent\n  b: parent\n"), 0o644))
-
 	env := &Environment{
 		Pins:    map[string]string{},
 		Sources: map[string]Source{},
 	}
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "child.yaml")))
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "parent.yaml")))
+	require.NoError(t, mergeEnvironment(env, []byte("pins:\n  b: child\n  c: child\n")))
+	require.NoError(t, mergeEnvironment(env, []byte("pins:\n  a: parent\n  b: parent\n")))
 
 	assert.Equal(t, "parent", env.Pins["a"])
 	assert.Equal(t, "child", env.Pins["b"])
@@ -108,28 +108,27 @@ func TestMergePins(t *testing.T) {
 func TestMergeSources(t *testing.T) {
 	t.Parallel()
 
-	testDir := t.TempDir()
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "child.yaml"), []byte(`---
+	childContent := []byte(`---
 sources:
   b:
     https_url_template: child
   c:
     https_url_template: child
-`), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(testDir, "parent.yaml"), []byte(`---
+`)
+	parentContent := []byte(`---
 sources:
   a:
     https_url_template: parent
   b:
     https_url_template: parent
-`), 0o644))
+`)
 
 	env := &Environment{
 		Pins:    map[string]string{},
 		Sources: map[string]Source{},
 	}
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "child.yaml")))
-	require.NoError(t, mergeEnvironment(env, filepath.Join(testDir, "parent.yaml")))
+	require.NoError(t, mergeEnvironment(env, childContent))
+	require.NoError(t, mergeEnvironment(env, parentContent))
 
 	assert.Equal(t, "parent", env.Sources["a"].HTTPSURLTemplate)
 	assert.Equal(t, "child", env.Sources["b"].HTTPSURLTemplate)

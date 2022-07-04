@@ -1,61 +1,98 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
+	"gopkg.in/yaml.v3"
 )
 
 const (
 	DriverName = "toolshare"
 
-	configFileName = DriverName + ".yaml"
+	configFileName = DriverName + "_conf.yaml"
 )
 
-func Parse(log *logrus.Logger, flags *pflag.FlagSet) (*Global, error) {
-	viper.SetConfigType("yaml")
+type Global struct {
+	RemoteCache *RemoteCache `yaml:"remote_cache"`
+	State       *State       `yaml:"state"`
 
-	setConfigDefaults()
-	if err := viper.BindPFlags(flags); err != nil {
-		log.WithError(err).Error("Failed to")
-		return nil, err
-	}
-
-	for _, configPath := range getConfigPaths() {
-		if configPath == "" {
-			continue
-		}
-		viper.SetConfigFile(configPath)
-		if err := viper.MergeInConfig(); err != nil {
-			log.WithError(err).Error("Failed to read in standard config.")
-			return nil, err
-		}
-	}
-	viper.AutomaticEnv()
-
-	base := &Global{}
-	if err := viper.UnmarshalExact(base); err != nil {
-		return nil, err
-	}
-	return base, nil
+	ForcePinned    bool `yaml:"force_pinned"`
+	DisableSources bool `yaml:"disable_sources"`
 }
 
-func SystemConfigPath() string {
+type RemoteCache struct {
+	cache
+}
+
+type State struct {
+	Type            string        `yaml:"type"`
+	Local           string        `yaml:"local"`
+	RefreshInterval time.Duration `yaml:"refresh_interval"`
+}
+
+func Parse(log *logrus.Logger, conf *Global) error {
+	if conf == nil {
+		return errors.New("can not parse configuration into nil struct")
+	}
+
+	for _, p := range GetConfigDirs() {
+		raw, err := os.ReadFile(filepath.Join(p, configFileName))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		if err = yaml.Unmarshal(raw, conf); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func GetStorageDir() string {
+	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join("/var/tmp", DriverName)
+	case "linux":
+		return filepath.Join("/var/cache", DriverName)
+	case "windows":
+		return filepath.Join(os.Getenv("PROGRAMDATA"), DriverName)
+	default:
+		panic("unsupported platform")
+	}
+}
+
+// We need the config directories in reverse-order of priority such that we can safely unmarshal
+// them in order into the same target struct and guarantee the expected semantics.
+func GetConfigDirs() []string {
+	var dirs []string
+	if p := GetUserConfigDir(); p != "" {
+		dirs = append(dirs, p)
+	}
+	if p := GetSystemConfigDir(); p != "" {
+		dirs = append(dirs, p)
+	}
+	return dirs
+}
+
+func GetSystemConfigDir() string {
 	switch runtime.GOOS {
 	case "darwin", "linux":
 		return filepath.Join("/etc", DriverName)
 	case "windows":
-		return filepath.Join("PROGRAMDATA", DriverName)
+		return filepath.Join(os.Getenv("PROGRAMDATA"), DriverName)
 	default:
-		return ""
+		panic("unsupported platform")
 	}
 }
 
-func UserConfigPath() string {
+func GetUserConfigDir() string {
 	switch runtime.GOOS {
 	case "linux":
 		if configPath, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
@@ -67,33 +104,6 @@ func UserConfigPath() string {
 	case "windows":
 		return filepath.Join(os.Getenv("LOCALAPPDATA"), DriverName)
 	default:
-		return ""
+		panic("unsupported platform")
 	}
-}
-
-func GetLocalStorageRoot() string {
-	switch runtime.GOOS {
-	case "darwin", "linux":
-		return filepath.Join(os.Getenv("HOME"), "."+DriverName)
-	case "windows":
-		return filepath.Join(os.Getenv("LOCALAPPDATA"), DriverName)
-	default:
-		return ""
-	}
-}
-
-func setConfigDefaults() {
-	viper.SetDefault("force_pinned", false)
-	viper.SetDefault("root", GetLocalStorageRoot())
-}
-
-func getConfigPaths() []string {
-	var configPaths []string
-	if p := SystemConfigPath(); p != "" {
-		configPaths = append(configPaths, filepath.Join(p, configFileName))
-	}
-	if p := UserConfigPath(); p != "" {
-		configPaths = append(configPaths, filepath.Join(p, configFileName))
-	}
-	return configPaths
 }

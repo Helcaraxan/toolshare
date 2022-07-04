@@ -1,4 +1,4 @@
-package driver
+package main
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Env(log *logrus.Logger, conf config.Global, env environment.Environment) *cobra.Command {
+func Env(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
 	opts := &envOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -32,11 +32,11 @@ follows:
   to the '%s subscribe' command.
 - For each tool we find the first version provided by the following steps:
   - Recursively walking up the filesystem up to the root looking for '%s.yaml' files containing
-    a pinned version for the tool.
+    a pinned version for the config.
   - Looking at the user's configuration directory for a potential 'global.yaml' file pinning a
-	version for the tool. The configuration directory is '$HOME/.config/%s' on Linux and MacOS
+	version for the config. The configuration directory is '$HOME/.config/%s' on Linux and MacOS
 	and '%%LOCALAPPDATA%%/%s' on Windows.
-  - Looking for a system-level configuration file pinning a version for the tool. This is
+  - Looking for a system-level configuration file pinning a version for the config. This is
 	'/etc/%s/toolsharerc' on Linux and MacOS and '%%PROGRAMDATA%%/%s/toolsharerc on
 	Windows.
   - If, and only if, running unpinned versions is not prohibited by the local configuration we check
@@ -66,6 +66,11 @@ func (o *envOptions) environment() error {
 		return err
 	}
 
+	if len(tools) == 0 {
+		fmt.Println("No tools are configured in the current environment.")
+		return nil
+	}
+
 	var sortedTools []string
 	for _, tool := range tools {
 		s := defaultSource
@@ -74,8 +79,8 @@ func (o *envOptions) environment() error {
 		}
 		sortedTools = append(sortedTools, fmt.Sprintf("%s | %s | %s", tool.Tool, tool.Version, s))
 	}
-	sort.Strings(append([]string{"Tool | Version | Source", "---- | ------- | ------"}, sortedTools...))
+	sort.Strings(sortedTools)
 
-	fmt.Println(columnize.SimpleFormat(sortedTools))
+	fmt.Println(columnize.SimpleFormat(append([]string{"Tool | Version | Source", "---- | ------- | ------"}, sortedTools...)))
 	return nil
 }

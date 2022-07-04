@@ -3,9 +3,8 @@ package backend
 import (
 	"time"
 
+	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Helcaraxan/toolshare/internal/tool"
 )
 
 type S3Config struct {
@@ -30,12 +29,12 @@ func NewS3(log *logrus.Logger, c *S3Config) *S3 {
 	}
 }
 
-func (s *S3) Fetch(_ tool.Binary) ([]byte, error) {
+func (s *S3) Fetch(_ config.Binary) ([]byte, error) {
 	s.log.Error("Unimplemented.")
 	return nil, errFailed
 }
 
-func (s *S3) Store(_ tool.Binary, _ []byte) error {
+func (s *S3) Store(_ config.Binary, _ []byte) error {
 	s.log.Error("Unimplemented.")
 	return errFailed
 }
