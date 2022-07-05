@@ -9,9 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/google/go-github/v43/github"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type GitHubConfig struct {

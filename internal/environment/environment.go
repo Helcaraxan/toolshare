@@ -35,17 +35,19 @@ func GetEnvironment(env *Environment) error {
 
 	var candidatePaths []string
 	for {
-		candidatePaths = append(candidatePaths, filepath.Join(cwd, envFileName))
+		candidatePaths = append(candidatePaths, filepath.Join(cwd, "."+envFileName))
 		if cwd == filepath.Dir(cwd) {
 			break
 		}
 		cwd = filepath.Dir(cwd)
 	}
-	candidatePaths = append(candidatePaths, config.GetConfigDirs()...)
+	for _, p := range config.GetConfigDirs() {
+		candidatePaths = append(candidatePaths, filepath.Join(p, envFileName))
+	}
 
 	for _, p := range candidatePaths {
 		var raw []byte
-		raw, err = os.ReadFile(filepath.Join(p, envFileName))
+		raw, err = os.ReadFile(p)
 		if errors.Is(err, os.ErrNotExist) {
 			continue
 		} else if err != nil {

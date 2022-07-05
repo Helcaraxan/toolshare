@@ -8,8 +8,9 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type GCSConfig struct {

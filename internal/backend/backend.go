@@ -21,12 +21,10 @@ type Storage interface {
 
 type BinaryProvider interface {
 	Storage
-	Path(binary config.Binary) (string, error)
+	Path(binary config.Binary) string
 }
 
 var (
-	ErrNotFound = errors.New("binary not found")
-
 	// To guarantee that implementations remain compatible with the interface.
 	_ BinaryProvider = &FileSystem{}
 
@@ -40,8 +38,8 @@ var (
 )
 
 type CommonConfig struct {
-	Mappings            TemplateMappings `json:"template_mappings"`
 	ArchivePathTemplate string           `yaml:"archive_path_template"`
+	Mappings            TemplateMappings `yaml:"template_mappings"`
 }
 
 type TemplateMappings struct {
@@ -59,11 +57,11 @@ type TemplateMappings struct {
 
 func (c *CommonConfig) instantiateTemplate(b config.Binary, tmpl string) string {
 	return strings.NewReplacer(
-		"arch", c.arch(b),
-		"bin", c.exe(b),
-		"os", c.platform(b),
-		"tool", b.Tool,
-		"version", b.Version,
+		"{arch}", c.arch(b),
+		"{exe}", c.exe(b),
+		"{platform}", c.platform(b),
+		"{tool}", b.Tool,
+		"{version}", b.Version,
 	).Replace(tmpl)
 }
 

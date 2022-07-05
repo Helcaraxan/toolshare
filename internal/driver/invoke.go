@@ -32,8 +32,7 @@ func Invoke(log *logrus.Logger, conf *config.Global, env *environment.Environmen
 		Long: fmt.Sprintf(`Run a tool at a version determined by the current environment with the given arguments. For details
 about how the current environment is determined please see '%s env --help'.`, config.DriverName),
 		RunE: func(_ *cobra.Command, args []string) error {
-			opts.tool = args[0]
-			opts.args = args[1:]
+			opts.args = args
 			return opts.invoke()
 		},
 	}
@@ -70,6 +69,8 @@ func (o *invokeOptions) invoke() error {
 		o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
 		os.Exit(invokeExitCode)
 	}
+	t.Platform = config.CurrentPlatform()
+	t.Arch = config.CurrentArch()
 
 	// Ensure we have the tool available to run.
 	dl := &downloadOptions{

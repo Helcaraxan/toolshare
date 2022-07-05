@@ -3,8 +3,9 @@ package backend
 import (
 	"time"
 
-	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type S3Config struct {

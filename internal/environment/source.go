@@ -19,8 +19,6 @@ type Source struct {
 	*backend.GCSConfig
 	*backend.GitHubConfig
 	*backend.S3Config
-
-	common *backend.CommonConfig
 }
 
 func (s *Source) String() string {
@@ -70,40 +68,40 @@ func (s *Source) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 
+	var c backend.CommonConfig
+	if err := value.Decode(&c); err != nil {
+		return nil
+	}
+
 	if isFile {
-		s.FileSystemConfig = &backend.FileSystemConfig{}
+		s.FileSystemConfig = &backend.FileSystemConfig{CommonConfig: c}
 		if err := value.Decode(s.FileSystemConfig); err != nil {
 			return err
 		}
-		s.common = &s.FileSystemConfig.CommonConfig
 	}
 	if isGCS {
-		s.GCSConfig = &backend.GCSConfig{}
+		s.GCSConfig = &backend.GCSConfig{CommonConfig: c}
 		if err := value.Decode(s.GCSConfig); err != nil {
 			return err
 		}
-		s.common = &s.GCSConfig.CommonConfig
 	}
 	if isGitHub {
-		s.GitHubConfig = &backend.GitHubConfig{}
+		s.GitHubConfig = &backend.GitHubConfig{CommonConfig: c}
 		if err := value.Decode(s.GitHubConfig); err != nil {
 			return err
 		}
-		s.common = &s.GitHubConfig.CommonConfig
 	}
 	if isHTTPS {
-		s.HTTPSConfig = &backend.HTTPSConfig{}
+		s.HTTPSConfig = &backend.HTTPSConfig{CommonConfig: c}
 		if err := value.Decode(s.HTTPSConfig); err != nil {
 			return err
 		}
-		s.common = &s.HTTPSConfig.CommonConfig
 	}
 	if isS3 {
-		s.S3Config = &backend.S3Config{}
+		s.S3Config = &backend.S3Config{CommonConfig: c}
 		if err := value.Decode(s.S3Config); err != nil {
 			return err
 		}
-		s.common = &s.S3Config.CommonConfig
 	}
 	return s.validate()
 }

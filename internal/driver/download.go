@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 
@@ -111,7 +111,7 @@ func (o downloadOptions) download() error {
 }
 
 func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote backend.Storage, source backend.Storage, err error) {
-	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{os}", "{arch}", "{tool}{exe}"}
+	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{platform}", "{arch}", "{tool}{exe}"}
 
 	local = backend.NewFileSystem(o.log, &backend.FileSystemConfig{
 		FilePathTemplate: filepath.Join(append([]string{config.GetStorageDir()}, cacheURLTemplate...)...),
@@ -150,20 +150,20 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 }
 
 func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote backend.Storage, source backend.Storage, b config.Binary) (string, error) {
-	p, err := local.Path(b)
-	if err == nil {
-		return p, nil
-	} else if err != nil && !errors.Is(err, backend.ErrNotFound) {
+	path := local.Path(b)
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return "", err
 	}
 
 	var fetchErr error
 	for _, s := range []backend.Storage{remote, source} {
-		if !reflect.ValueOf(remote).IsNil() {
+		if s != nil {
 			var raw []byte
 			raw, fetchErr = s.Fetch(b)
 			if fetchErr == nil {
-				if err = local.Store(b, raw); err != nil {
+				if err := local.Store(b, raw); err != nil {
 					return "", err
 				}
 				break
@@ -173,5 +173,5 @@ func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote back
 	if fetchErr != nil {
 		return "", fetchErr
 	}
-	return p, nil
+	return path, nil
 }
