@@ -16,18 +16,21 @@ import (
 
 var envFileName = fmt.Sprintf("%s.yaml", config.DriverName)
 
-type Environment struct {
-	Pins    map[string]string `yaml:"pins"`
-	Sources map[string]Source `yaml:"sources"`
+type environmentSpec struct {
+	Pins    map[string]string  `yaml:"pins"`
+	Sources map[string]*Source `yaml:"sources"`
 }
 
-func GetEnvironment(env *Environment) error {
-	if env == nil {
-		return errors.New("can not parse environment into nil struct")
-	}
-	env.Pins = map[string]string{}
-	env.Sources = map[string]Source{}
+type Environment map[string]ToolRegistration
 
+type ToolRegistration struct {
+	Source      *Source
+	SourceFile  string
+	Version     string
+	VersionFile string
+}
+
+func GetEnvironment(conf *config.Global, env Environment) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -53,41 +56,53 @@ func GetEnvironment(env *Environment) error {
 		} else if err != nil {
 			return err
 		}
-		if err := mergeEnvironment(env, raw); err != nil {
+
+		if err = mergeEnvironment(env, p, raw); err != nil {
 			return err
 		}
+	}
+
+	if !conf.ForcePinned && conf.State != nil {
+		// TODO.
 	}
 	return nil
 }
 
-func mergeEnvironment(env *Environment, content []byte) error {
+func mergeEnvironment(env Environment, path string, content []byte) error {
 	dec := yaml.NewDecoder(bytes.NewReader(content))
 	dec.KnownFields(true)
 
-	newEnv := Environment{Sources: map[string]Source{}}
+	var newEnv environmentSpec
 	if err := dec.Decode(&newEnv); err != nil {
 		return err
 	}
 
 	// For both pins and sources we only add tool settings if there are none available yet.
 	for tool, version := range newEnv.Pins {
-		if _, ok := env.Pins[tool]; !ok {
-			env.Pins[tool] = version
+		r := env[tool]
+		if r.Version == "" {
+			r.Version = version
+			r.VersionFile = path
+			env[tool] = r
 		}
 	}
 	for tool, source := range newEnv.Sources {
-		if _, ok := env.Sources[tool]; !ok {
-			env.Sources[tool] = source
+		r := env[tool]
+		if r.Source == nil {
+			r.Source = source
+			r.SourceFile = path
+			env[tool] = r
 		}
 	}
 	return nil
 }
 
-func (e *Environment) Source(log *logrus.Logger, tool string) backend.Storage {
-	sc, ok := e.Sources[tool]
+func (e Environment) Source(log *logrus.Logger, tool string) backend.Storage {
+	r, ok := e[tool]
 	if !ok {
 		return nil
 	}
+	sc := r.Source
 
 	switch {
 	case sc.FileSystemConfig != nil:

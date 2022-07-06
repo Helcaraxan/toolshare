@@ -13,12 +13,12 @@ import (
 func TestParseErroneousConfigSyntax(t *testing.T) {
 	t.Parallel()
 
-	env := &Environment{Sources: map[string]Source{}}
+	env := Environment{}
 
 	raw, err := os.ReadFile(filepath.Join("testdata", "erroneous_config_syntax.yaml"))
 	require.NoError(t, err)
 
-	err = mergeEnvironment(env, raw)
+	err = mergeEnvironment(env, "", raw)
 	require.Error(t, err)
 }
 
@@ -73,18 +73,18 @@ func TestMergeEnvironment(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			env := &Environment{Sources: map[string]Source{}}
+			env := Environment{}
 
 			raw, err := os.ReadFile(filepath.Join("testdata", testcase.testfile))
 			require.NoError(t, err)
 
-			err = mergeEnvironment(env, raw)
+			err = mergeEnvironment(env, "", raw)
 			if testcase.errType != nil {
 				require.Error(t, err)
 				assert.True(t, errors.Is(err, testcase.errType), "error %q should be of type %q", err, testcase.errType)
 			} else {
 				require.NoError(t, err)
-				assert.Len(t, env.Sources, testcase.sourceCount)
+				assert.Len(t, env, testcase.sourceCount)
 			}
 		})
 	}
@@ -93,16 +93,13 @@ func TestMergeEnvironment(t *testing.T) {
 func TestMergePins(t *testing.T) {
 	t.Parallel()
 
-	env := &Environment{
-		Pins:    map[string]string{},
-		Sources: map[string]Source{},
-	}
-	require.NoError(t, mergeEnvironment(env, []byte("pins:\n  b: child\n  c: child\n")))
-	require.NoError(t, mergeEnvironment(env, []byte("pins:\n  a: parent\n  b: parent\n")))
+	env := Environment{}
+	require.NoError(t, mergeEnvironment(env, "", []byte("pins:\n  b: child\n  c: child\n")))
+	require.NoError(t, mergeEnvironment(env, "", []byte("pins:\n  a: parent\n  b: parent\n")))
 
-	assert.Equal(t, "parent", env.Pins["a"])
-	assert.Equal(t, "child", env.Pins["b"])
-	assert.Equal(t, "child", env.Pins["c"])
+	assert.Equal(t, "parent", env["a"].Version)
+	assert.Equal(t, "child", env["b"].Version)
+	assert.Equal(t, "child", env["c"].Version)
 }
 
 func TestMergeSources(t *testing.T) {
@@ -123,14 +120,11 @@ sources:
     https_url_template: parent
 `)
 
-	env := &Environment{
-		Pins:    map[string]string{},
-		Sources: map[string]Source{},
-	}
-	require.NoError(t, mergeEnvironment(env, childContent))
-	require.NoError(t, mergeEnvironment(env, parentContent))
+	env := Environment{}
+	require.NoError(t, mergeEnvironment(env, "", childContent))
+	require.NoError(t, mergeEnvironment(env, "", parentContent))
 
-	assert.Equal(t, "parent", env.Sources["a"].HTTPSURLTemplate)
-	assert.Equal(t, "child", env.Sources["b"].HTTPSURLTemplate)
-	assert.Equal(t, "child", env.Sources["c"].HTTPSURLTemplate)
+	assert.Equal(t, "parent", env["a"].Source.HTTPSURLTemplate)
+	assert.Equal(t, "child", env["b"].Source.HTTPSURLTemplate)
+	assert.Equal(t, "child", env["c"].Source.HTTPSURLTemplate)
 }

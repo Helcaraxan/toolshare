@@ -16,7 +16,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Invoke(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
+func Invoke(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
 	opts := &invokeOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -60,23 +60,17 @@ func registerInvokeFlags(cmd *cobra.Command, opts *invokeOptions) {
 const invokeExitCode = 128 // Used to differentiate from exit codes from an invoked process.
 
 func (o *invokeOptions) invoke() error {
-	tools, err := o.knownTools()
-	if err != nil {
-		return err
-	}
-	t, ok := tools[o.tool]
-	if !ok {
+	version := o.env[o.tool].Version
+	if version == "" {
 		o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
 		os.Exit(invokeExitCode)
 	}
-	t.Platform = config.CurrentPlatform()
-	t.Arch = config.CurrentArch()
 
 	// Ensure we have the tool available to run.
 	dl := &downloadOptions{
 		commonOpts: o.commonOpts,
-		tool:       t.Tool,
-		version:    t.Version,
+		tool:       o.tool,
+		version:    version,
 		platforms:  []string{string(config.CurrentPlatform())},
 		archs:      []string{string(config.CurrentArch())},
 	}
@@ -85,7 +79,12 @@ func (o *invokeOptions) invoke() error {
 		o.log.Errorf("Unable to fetch tool: %v", err)
 		os.Exit(invokeExitCode)
 	}
-	path, err := dl.getToolBinary(local, remote, source, t)
+	path, err := dl.getToolBinary(local, remote, source, config.Binary{
+		Tool:     o.tool,
+		Version:  version,
+		Platform: config.CurrentPlatform(),
+		Arch:     config.CurrentArch(),
+	})
 	if err != nil {
 		return err
 	}

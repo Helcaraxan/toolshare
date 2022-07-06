@@ -12,7 +12,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Env(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
+func Env(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
 	opts := &envOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -47,11 +47,19 @@ follows:
 		},
 	}
 
+	registerEnvFlags(cmd, opts)
+
 	return cmd
 }
 
 type envOptions struct {
 	commonOpts
+
+	full bool
+}
+
+func registerEnvFlags(cmd *cobra.Command, opts *envOptions) {
+	cmd.Flags().BoolVar(&opts.full, "full", false, "Print extra information.")
 }
 
 func (o *envOptions) environment() error {
@@ -61,26 +69,34 @@ func (o *envOptions) environment() error {
 	}
 	defaultSource += " cache"
 
-	tools, err := o.knownTools()
-	if err != nil {
-		return err
-	}
-
-	if len(tools) == 0 {
+	if len(o.env) == 0 {
 		fmt.Println("No tools are configured in the current environment.")
 		return nil
 	}
 
 	var sortedTools []string
-	for _, tool := range tools {
+	for tool, reg := range o.env {
 		s := defaultSource
-		if b, ok := o.env.Sources[tool.Tool]; ok {
-			s = b.String()
+		if reg.Source != nil {
+			s = reg.Source.String()
 		}
-		sortedTools = append(sortedTools, fmt.Sprintf("%s | %s | %s", tool.Tool, tool.Version, s))
+		info := fmt.Sprintf("%s | %s | %s", tool, reg.Version, s)
+		if o.full {
+			info += fmt.Sprintf(" | %s | %s", reg.VersionFile, reg.SourceFile)
+		}
+		sortedTools = append(sortedTools, info)
 	}
 	sort.Strings(sortedTools)
 
-	fmt.Println(columnize.SimpleFormat(append([]string{"Tool | Version | Source", "---- | ------- | ------"}, sortedTools...)))
+	headerRows := []string{
+		"Tool | Pin | Source",
+		"---- | --- | ------",
+	}
+	if o.full {
+		headerRows[0] += " | Pin file | Source file"
+		headerRows[1] += " | -------- | -----------"
+	}
+
+	fmt.Println(columnize.SimpleFormat(append(headerRows, sortedTools...)))
 	return nil
 }

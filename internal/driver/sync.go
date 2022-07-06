@@ -21,7 +21,7 @@ const (
 	syncModeShim  = "shim"
 )
 
-func Sync(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
+func Sync(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
 	opts := &syncOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -78,13 +78,8 @@ func (o *syncOptions) sync() error {
 		return fmt.Errorf("unknown sync mode %q", o.mode)
 	}
 
-	knownTools, err := o.commonOpts.knownTools()
-	if err != nil {
-		return err
-	}
-
 	if len(o.tools) == 0 {
-		for name := range knownTools {
+		for name := range o.env {
 			o.tools = append(o.tools, name)
 		}
 		o.log.Debug("No tools were specified. Subscribing to all tools registered in the current environment.")
@@ -94,16 +89,17 @@ func (o *syncOptions) sync() error {
 		return nil
 	}
 
-	if err = o.syncInitShimFolder(); err != nil {
+	if err := o.syncInitShimFolder(); err != nil {
 		return err
 	}
 
 	var errs []error
 	for _, name := range o.tools {
-		if b, ok := knownTools[name]; !ok {
+		if _, ok := o.env[name]; !ok {
 			errs = append(errs, fmt.Errorf("failed to subscribe to %q, tool not known in current environment", name))
 			continue
-		} else if err = o.syncCreateShim(b); err != nil {
+		}
+		if err := o.syncCreateShim(name); err != nil {
 			errs = append(errs, err)
 		}
 	}
@@ -117,11 +113,10 @@ func (o *syncOptions) sync() error {
 	}
 
 	for _, name := range o.tools {
-		b := knownTools[name]
 		dl := &downloadOptions{
 			commonOpts: o.commonOpts,
 			tool:       name,
-			version:    b.Version,
+			version:    o.env[name].Version,
 			platforms:  []string{string(config.CurrentPlatform())},
 			archs:      []string{string(config.CurrentArch())},
 		}
@@ -158,7 +153,7 @@ func (o *syncOptions) syncInitShimFolder() error {
 	return nil
 }
 
-func (o *syncOptions) syncCreateShim(b config.Binary) error {
+func (o *syncOptions) syncCreateShim(name string) error {
 	const (
 		cmdShimTemplate = `@ECHO OFF
 %s invoke --tool=%s -- %%*
@@ -169,7 +164,7 @@ func (o *syncOptions) syncCreateShim(b config.Binary) error {
 	)
 
 	invoker := config.DriverName
-	if b.Tool == config.DriverName {
+	if name == config.DriverName {
 		// We protect against infinite loops. Version-management should not be done via the same
 		// system as it causes a bootstrap problem.
 		return fmt.Errorf("can not create shim for tool with the same name as the driver %q", config.DriverName)
@@ -177,12 +172,12 @@ func (o *syncOptions) syncCreateShim(b config.Binary) error {
 
 	switch runtime.GOOS {
 	case "windows":
-		if err := o.syncWriteShim(b.Tool+".cmd", fmt.Sprintf(cmdShimTemplate, invoker, b.Tool)); err != nil {
+		if err := o.syncWriteShim(name+".cmd", fmt.Sprintf(cmdShimTemplate, invoker, name)); err != nil {
 			return err
 		}
 		fallthrough
 	default:
-		if err := o.syncWriteShim(b.Tool, fmt.Sprintf(shellShimTemplate, invoker, b.Tool)); err != nil {
+		if err := o.syncWriteShim(name, fmt.Sprintf(shellShimTemplate, invoker, name)); err != nil {
 			return err
 		}
 	}

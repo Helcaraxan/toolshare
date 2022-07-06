@@ -14,10 +14,8 @@ import (
 func main() {
 	log := logrus.New()
 
-	var (
-		conf config.Global
-		env  environment.Environment
-	)
+	var conf config.Global
+	env := map[string]environment.ToolRegistration{}
 
 	rootCmd := &cobra.Command{
 		Use: config.DriverName,
@@ -26,18 +24,18 @@ func main() {
 				return err
 			}
 
-			if err := environment.GetEnvironment(&env); err != nil {
+			if err := environment.GetEnvironment(&conf, env); err != nil {
 				return err
 			}
 			return nil
 		},
 	}
 	rootCmd.AddCommand(
-		Download(log, &conf, &env),
-		Env(log, &conf, &env),
-		Invoke(log, &conf, &env),
-		Sync(log, &conf, &env),
-		Versions(log, &conf, &env),
+		Download(log, &conf, env),
+		Env(log, &conf, env),
+		Invoke(log, &conf, env),
+		Sync(log, &conf, env),
+		Versions(log, &conf, env),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

@@ -16,7 +16,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Download(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
+func Download(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
 	opts := &downloadOptions{
 		commonOpts: commonOpts{
 			log:    log,
@@ -71,14 +71,10 @@ func (o downloadOptions) download() error {
 	}
 
 	if o.version == "" {
-		v := o.env.Pins[o.tool]
-		if v == "" && o.config.ForcePinned {
-			return errors.New("unpinned tools prohibited, version needed")
-		} else if v == "" && o.config.State != nil {
-			// TODO.
-		}
-		if v == "" {
-			return errors.New("version needed, none found")
+		o.version = o.env[o.tool].Version
+		if o.version == "" {
+			o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
+			os.Exit(invokeExitCode)
 		}
 	}
 

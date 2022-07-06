@@ -10,7 +10,7 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Versions(log *logrus.Logger, conf *config.Global, env *environment.Environment) *cobra.Command {
+func Versions(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
 	opts := &versionOpts{
 		commonOpts: commonOpts{
 			log:    log,
