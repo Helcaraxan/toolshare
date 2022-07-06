@@ -138,9 +138,7 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 		}
 	}
 
-	if !o.config.DisableSources {
-		source = o.env.Source(o.log, o.tool)
-	}
+	source = o.env.Source(o.log, o.tool)
 
 	return local, remote, source, nil
 }

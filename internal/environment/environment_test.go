@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 func TestParseErroneousConfigSyntax(t *testing.T) {
@@ -18,7 +20,7 @@ func TestParseErroneousConfigSyntax(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("testdata", "erroneous_config_syntax.yaml"))
 	require.NoError(t, err)
 
-	err = mergeEnvironment(env, "", raw)
+	err = mergeEnvironment(&config.Global{}, env, "", raw)
 	require.Error(t, err)
 }
 
@@ -78,7 +80,7 @@ func TestMergeEnvironment(t *testing.T) {
 			raw, err := os.ReadFile(filepath.Join("testdata", testcase.testfile))
 			require.NoError(t, err)
 
-			err = mergeEnvironment(env, "", raw)
+			err = mergeEnvironment(&config.Global{}, env, "", raw)
 			if testcase.errType != nil {
 				require.Error(t, err)
 				assert.True(t, errors.Is(err, testcase.errType), "error %q should be of type %q", err, testcase.errType)
@@ -94,8 +96,8 @@ func TestMergePins(t *testing.T) {
 	t.Parallel()
 
 	env := Environment{}
-	require.NoError(t, mergeEnvironment(env, "", []byte("pins:\n  b: child\n  c: child\n")))
-	require.NoError(t, mergeEnvironment(env, "", []byte("pins:\n  a: parent\n  b: parent\n")))
+	require.NoError(t, mergeEnvironment(&config.Global{}, env, "", []byte("pins:\n  b: child\n  c: child\n")))
+	require.NoError(t, mergeEnvironment(&config.Global{}, env, "", []byte("pins:\n  a: parent\n  b: parent\n")))
 
 	assert.Equal(t, "parent", env["a"].Version)
 	assert.Equal(t, "child", env["b"].Version)
@@ -121,8 +123,8 @@ sources:
 `)
 
 	env := Environment{}
-	require.NoError(t, mergeEnvironment(env, "", childContent))
-	require.NoError(t, mergeEnvironment(env, "", parentContent))
+	require.NoError(t, mergeEnvironment(&config.Global{}, env, "", childContent))
+	require.NoError(t, mergeEnvironment(&config.Global{}, env, "", parentContent))
 
 	assert.Equal(t, "parent", env["a"].Source.HTTPSURLTemplate)
 	assert.Equal(t, "child", env["b"].Source.HTTPSURLTemplate)

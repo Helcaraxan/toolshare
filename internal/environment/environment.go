@@ -57,7 +57,7 @@ func GetEnvironment(conf *config.Global, env Environment) error {
 			return err
 		}
 
-		if err = mergeEnvironment(env, p, raw); err != nil {
+		if err = mergeEnvironment(conf, env, p, raw); err != nil {
 			return err
 		}
 	}
@@ -68,7 +68,7 @@ func GetEnvironment(conf *config.Global, env Environment) error {
 	return nil
 }
 
-func mergeEnvironment(env Environment, path string, content []byte) error {
+func mergeEnvironment(conf *config.Global, env Environment, path string, content []byte) error {
 	dec := yaml.NewDecoder(bytes.NewReader(content))
 	dec.KnownFields(true)
 
@@ -86,6 +86,10 @@ func mergeEnvironment(env Environment, path string, content []byte) error {
 			env[tool] = r
 		}
 	}
+	if conf.DisableSources {
+		return nil
+	}
+
 	for tool, source := range newEnv.Sources {
 		r := env[tool]
 		if r.Source == nil {
@@ -98,11 +102,10 @@ func mergeEnvironment(env Environment, path string, content []byte) error {
 }
 
 func (e Environment) Source(log *logrus.Logger, tool string) backend.Storage {
-	r, ok := e[tool]
-	if !ok {
+	sc := e[tool].Source
+	if sc == nil {
 		return nil
 	}
-	sc := r.Source
 
 	switch {
 	case sc.FileSystemConfig != nil:
