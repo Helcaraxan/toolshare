@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 )
@@ -52,6 +53,7 @@ func Parse(log *logrus.Logger, conf *Global) error {
 			return err
 		}
 	}
+	log.Debugf("Parsed configuration:\n%+v", spew.Sdump(conf))
 	return nil
 }
 

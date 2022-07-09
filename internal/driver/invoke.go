@@ -60,7 +60,10 @@ func registerInvokeFlags(cmd *cobra.Command, opts *invokeOptions) {
 const invokeExitCode = 128 // Used to differentiate from exit codes from an invoked process.
 
 func (o *invokeOptions) invoke() error {
-	version := o.env[o.tool].Version
+	version := o.version
+	if version == "" {
+		version = o.env[o.tool].Version
+	}
 	if version == "" {
 		o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
 		os.Exit(invokeExitCode)
