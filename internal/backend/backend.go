@@ -11,10 +11,13 @@ import (
 	"io/fs"
 	"strings"
 
+	"go.uber.org/zap"
+
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type Storage interface {
+	fmt.Stringer
 	Fetch(binary config.Binary) ([]byte, error)
 	Store(binary config.Binary, content []byte) error
 }
@@ -29,9 +32,9 @@ var (
 	_ BinaryProvider = &FileSystem{}
 
 	_ Storage = &FileSystem{}
-	_ Storage = &HTTPS{}
 	_ Storage = &GCS{}
 	_ Storage = &GitHub{}
+	_ Storage = &HTTPS{}
 	_ Storage = &S3{}
 
 	errFailed = errors.New("failed")
@@ -121,8 +124,9 @@ func (c *CommonConfig) exe(b config.Binary) string {
 	return ""
 }
 
-func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b config.Binary) ([]byte, error) {
+func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPath string, b config.Binary) ([]byte, error) {
 	if c.ArchivePathTemplate == "" {
+		log.Debug("No archive path set. Using the fetched content as the tool binary itself.")
 		return srcRaw, nil
 	}
 
@@ -132,34 +136,43 @@ func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b confi
 	)
 
 	archivePath := c.instantiateTemplate(b, c.ArchivePathTemplate)
+	log = log.With(zap.String("archive-path", archivePath))
+
 	switch {
 	case strings.HasSuffix(srcPath, ".zip"):
+		log.Debug("Reading the fetched content as a ZIP archive.")
 		var (
 			zr *zip.Reader
 			fl fs.File
 		)
 		zr, err = zip.NewReader(bytes.NewReader(srcRaw), int64(len(srcRaw)))
 		if err != nil {
+			log.Error("Failed to open content with a ZIP reader.", zap.Error(err))
 			return nil, fmt.Errorf("failed to open fetched content as zip archive: %w", err)
 		}
 		fl, err = zr.Open(archivePath)
 		if err != nil {
+			log.Error("Path not found in archive.", zap.Error(err))
 			return nil, fmt.Errorf("failed to find path %q inside fetched content: %w", archivePath, err)
 		}
 		_, err = fl.Stat()
 		if err != nil {
+			log.Error("Failed to open archive path for reading.", zap.Error(err))
 			return nil, fmt.Errorf("failed to read file information for path %q inside fetched content: %w", archivePath, err)
 		}
 		rd = fl
 
 	case strings.HasSuffix(srcPath, ".tar.gz"):
+		log.Debug("Applying a GZIP decoder on the fetched content.")
 		rd, err = gzip.NewReader(rd)
 		if err != nil {
+			log.Error("Failed to open fetched content with a GZIP reader.", zap.Error(err))
 			return nil, fmt.Errorf("failed to open gzip reader for fetched content: %w", err)
 		}
 		fallthrough
 
 	case strings.HasSuffix(srcPath, ".tar"):
+		log.Debug("Reading the fetched content as a TAR archive.")
 		var hdr *tar.Header
 		tr := tar.NewReader(rd)
 		for err == nil {
@@ -169,8 +182,10 @@ func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b confi
 			}
 		}
 		if err != nil && !errors.Is(err, io.EOF) {
+			log.Error("Failed to search archive for path.", zap.Error(err))
 			return nil, fmt.Errorf("failed to search for path %q fetched content: %w", archivePath, err)
 		} else if hdr == nil {
+			log.Error("Path not found in archive.")
 			return nil, fmt.Errorf("failed to find path %q in fetched content: %w", archivePath, err)
 		}
 		rd = tr
@@ -179,5 +194,11 @@ func (c *CommonConfig) extractFromArchive(srcRaw []byte, srcPath string, b confi
 		return nil, fmt.Errorf("unrecognised archive format for downloaded content at %q", srcPath)
 	}
 
-	return io.ReadAll(rd)
+	raw, err := io.ReadAll(rd)
+	if err != nil {
+		log.Error("Failed to read binary fron archive.", zap.Error(err))
+		return nil, err
+	}
+	log.Debug("Successfully read binary from archive.")
+	return raw, nil
 }

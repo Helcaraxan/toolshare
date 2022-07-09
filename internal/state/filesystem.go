@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-git/go-billy/v5"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
@@ -19,7 +19,7 @@ import (
 const cacheStatusFile = "cache.status.yaml"
 
 type fileSystem struct {
-	log             *logrus.Logger
+	log             *zap.Logger
 	refreshInterval time.Duration
 	remote          State
 	storage         billy.Filesystem
@@ -27,12 +27,12 @@ type fileSystem struct {
 
 func (s *fileSystem) AvailableTools() ([]string, error) {
 	if err := s.Refresh(false); err != nil {
-		s.log.WithError(err).Warn("Failed to refresh state cache.")
+		s.log.Warn("Failed to refresh state cache.", zap.Error(err))
 	}
 
 	toolsDir, err := s.storage.ReadDir(".")
 	if err != nil {
-		s.log.WithError(err).Warn("Failed to read the state cache.")
+		s.log.Warn("Failed to read the state cache.", zap.Error(err))
 		return nil, err
 	}
 
@@ -50,7 +50,7 @@ func (s *fileSystem) AvailableTools() ([]string, error) {
 
 func (s *fileSystem) AvailableVersions(toolName string) ([]string, error) {
 	if err := s.Refresh(false); err != nil {
-		s.log.WithError(err).Warn("Failed to refresh state cache.")
+		s.log.Warn("Failed to refresh state cache.", zap.Error(err))
 	}
 
 	state, err := s.readToolState(toolName)
@@ -64,7 +64,7 @@ func (s *fileSystem) AvailableVersions(toolName string) ([]string, error) {
 
 func (s *fileSystem) RecommendedVersion(toolName string) (string, error) {
 	if err := s.Refresh(false); err != nil {
-		s.log.WithError(err).Warn("Failed to refresh state cache.")
+		s.log.Warn("Failed to refresh state cache.", zap.Error(err))
 	}
 
 	state, err := s.readToolState(toolName)
@@ -75,30 +75,31 @@ func (s *fileSystem) RecommendedVersion(toolName string) (string, error) {
 }
 
 func (s *fileSystem) Refresh(force bool) error {
-	var state refreshState
+	log := s.log.With(zap.String("status-file", filepath.Join(s.storage.Root(), cacheStatusFile)))
 
 	stateFile, err := s.storage.OpenFile(cacheStatusFile, os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0o644)
 	if err != nil {
-		s.log.WithError(err).Error("Failed to open state cache status file.")
+		log.Error("Failed to open state cache status file.", zap.Error(err))
 		return err
 	}
 	defer stateFile.Close()
 
 	stateContent, err := io.ReadAll(stateFile)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to read state cache status file.")
+		log.Error("Unable to read state cache status file.", zap.Error(err))
 		return err
 	}
 
+	var state refreshState
 	if len(stateContent) > 0 {
 		if err = yaml.Unmarshal(stateContent, &state); err != nil {
-			s.log.WithError(err).Error("Unable to unmarshal state cache status file.")
+			log.Error("Unable to unmarshal state cache status file.", zap.Error(err))
 			return err
 		}
 	}
 
 	if !force && time.Now().Before(state.LastRefresh.Add(s.refreshInterval)) {
-		s.log.Debugf("Not refreshing state cache. Last refresh was at %v and refresh interval is %v.", state.LastRefresh, s.refreshInterval)
+		log.Debug("Not refreshing state cache.", zap.Time("last-refresh", state.LastRefresh), zap.Duration("refresh-interval", s.refreshInterval))
 		return nil
 	}
 
@@ -109,21 +110,22 @@ func (s *fileSystem) Refresh(force bool) error {
 	state.LastRefresh = time.Now()
 	stateContent, err = yaml.Marshal(&state)
 	if err != nil {
-		s.log.WithError(err).Error("Unable to marshal new state cache status.")
+		log.Error("Unable to marshal new state cache status.", zap.Error(err))
 		return err
 	}
 
 	if _, err = stateFile.Write(stateContent); err != nil {
-		s.log.WithError(err).Errorf("Unable to update state cache status file %q.", stateFile)
+		log.Error("Unable to update state cache status file.", zap.Error(err))
 		return err
 	}
 	return nil
 }
 
 func (s *fileSystem) Fetch(target billy.Filesystem) error {
+	log := s.log.With(zap.String("state-root", s.storage.Root()))
 	stateFiles, err := s.storage.ReadDir("/")
 	if err != nil {
-		s.log.WithError(err).Error("Unable to read the state folder.")
+		log.Error("Unable to read the content of the state folder.", zap.Error(err))
 		return err
 	}
 
@@ -148,7 +150,7 @@ func (s *fileSystem) Fetch(target billy.Filesystem) error {
 
 	targetFiles, err := target.ReadDir("/")
 	if err != nil {
-		s.log.WithError(err).Error("Unable to read content of target state.")
+		log.Error("Unable to read content of target state.", zap.Error(err))
 		return err
 	}
 
@@ -160,7 +162,7 @@ func (s *fileSystem) Fetch(target billy.Filesystem) error {
 		}
 
 		if err = target.Remove(info.Name()); err != nil {
-			s.log.WithError(err).Errorf("Failed to clean up stale state file %q.", info.Name())
+			log.Error("Failed to clean up stale state file.", zap.String("state-file", filepath.Join(s.storage.Root(), info.Name())), zap.Error(err))
 			return err
 		}
 	}
@@ -228,12 +230,14 @@ func (s *fileSystem) DeleteVersions(binaries ...config.Binary) error {
 }
 
 func (s *fileSystem) readToolState(toolName string) (*toolState, error) {
+	log := s.log.With(zap.String("tool-state", filepath.Join(s.storage.Root(), toolName+".yaml")))
+
 	stateFile, err := s.storage.Open(toolName + ".yaml")
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			s.log.Errorf("No state file for tool %q available in state cache.", toolName)
+			log.Error("No state file for tool available in state cache.")
 		} else {
-			s.log.WithError(err).Errorf("Unable to read state file for tool %q.", toolName)
+			log.Error("Unable to read tool state file.", zap.Error(err))
 		}
 		return nil, err
 	}
@@ -241,39 +245,41 @@ func (s *fileSystem) readToolState(toolName string) (*toolState, error) {
 
 	stateContent, err := io.ReadAll(stateFile)
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to read state file for tool %q.", toolName)
+		log.Error("Unable to read tool state file.", zap.Error(err))
 		return nil, err
 	}
 
 	var state toolState
 	if err = yaml.Unmarshal(stateContent, &state); err != nil {
-		s.log.WithError(err).Errorf("Unable to unmarshal state file for tool %q.", toolName)
+		log.Error("Unable to unmarshal tool state file.", zap.Error(err))
 		return nil, err
 	}
 	return &state, nil
 }
 
 func (s *fileSystem) writeToolState(toolName string, state *toolState) error {
+	log := s.log.With(zap.String("tool-state", filepath.Join(s.storage.Root(), toolName+".yaml")))
+
 	stateContent, err := yaml.Marshal(state)
 	if err != nil {
-		s.log.WithError(err).Error("Failed to marshal new state file content.")
+		log.Error("Failed to marshal new tool state file content.", zap.Error(err))
 		return err
 	}
 
 	stateFile, err := s.storage.OpenFile(toolName+".yaml.new", os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
-		s.log.WithError(err).Errorf("Unable to open state file for tool %q.", toolName)
+		log.Error("Unable to open tool state file.", zap.Error(err))
 		return err
 	}
 	defer stateFile.Close()
 
 	if _, err = stateFile.Write(stateContent); err != nil {
-		s.log.WithError(err).Error("Failed to write new state file content.")
+		log.Error("Failed to write new tool state file content.", zap.Error(err))
 		return err
 	}
 
 	if err = s.storage.Rename(stateFile.Name(), toolName+".yaml"); err != nil {
-		s.log.WithError(err).Error("Unable to move temporary state file to permanent position.")
+		log.Error("Unable to move temporary tool state file to permanent position.", zap.Error(err))
 	}
 	return nil
 }

@@ -4,9 +4,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
 type HTTPSConfig struct {
@@ -15,16 +16,20 @@ type HTTPSConfig struct {
 	HTTPSURLTemplate string `yaml:"https_url_template"`
 }
 
+func (c HTTPSConfig) String() string {
+	return c.HTTPSURLTemplate
+}
+
 type HTTPS struct {
-	log     *logrus.Logger
+	log     *zap.Logger
 	timeout time.Duration
 
 	HTTPSConfig
 }
 
-func NewHTTPS(log *logrus.Logger, c *HTTPSConfig) *HTTPS {
+func NewHTTPS(logBuilder *logger.Builder, c *HTTPSConfig) *HTTPS {
 	return &HTTPS{
-		log:         log,
+		log:         logBuilder.Domain(logger.HTTPSDomain),
 		timeout:     time.Minute,
 		HTTPSConfig: *c,
 	}

@@ -5,20 +5,14 @@ import (
 	"sort"
 
 	"github.com/ryanuber/columnize"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Env(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
+func Env(cOpts *commonOpts) *cobra.Command {
 	opts := &envOptions{
-		commonOpts: commonOpts{
-			log:    log,
-			config: conf,
-			env:    env,
-		},
+		commonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -53,7 +47,7 @@ follows:
 }
 
 type envOptions struct {
-	commonOpts
+	*commonOpts
 
 	full bool
 }

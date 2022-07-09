@@ -12,7 +12,7 @@ type Binary struct {
 	Arch     Arch
 }
 
-func (b *Binary) String() string {
+func (b Binary) String() string {
 	return fmt.Sprintf("%s-%s-%s@%s", b.Tool, b.Platform, b.Arch, b.Version)
 }
 

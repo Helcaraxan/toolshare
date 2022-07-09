@@ -7,11 +7,11 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
 
 	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
 var envFileName = fmt.Sprintf("%s.yaml", config.DriverName)
@@ -101,7 +101,7 @@ func mergeEnvironment(conf *config.Global, env Environment, path string, content
 	return nil
 }
 
-func (e Environment) Source(log *logrus.Logger, tool string) backend.Storage {
+func (e Environment) Source(logBuilder *logger.Builder, tool string) backend.Storage {
 	sc := e[tool].Source
 	if sc == nil {
 		return nil
@@ -109,15 +109,15 @@ func (e Environment) Source(log *logrus.Logger, tool string) backend.Storage {
 
 	switch {
 	case sc.FileSystemConfig != nil:
-		return backend.NewFileSystem(log, sc.FileSystemConfig, false)
+		return backend.NewFileSystem(logBuilder, sc.FileSystemConfig, false)
 	case sc.GCSConfig != nil:
-		return backend.NewGCS(log, sc.GCSConfig)
+		return backend.NewGCS(logBuilder, sc.GCSConfig)
 	case sc.GitHubConfig != nil:
-		return backend.NewGitHub(log, sc.GitHubConfig)
+		return backend.NewGitHub(logBuilder, sc.GitHubConfig)
 	case sc.HTTPSConfig != nil:
-		return backend.NewHTTPS(log, sc.HTTPSConfig)
+		return backend.NewHTTPS(logBuilder, sc.HTTPSConfig)
 	case sc.S3Config != nil:
-		return backend.NewS3(log, sc.S3Config)
+		return backend.NewS3(logBuilder, sc.S3Config)
 	default:
 		return nil
 	}

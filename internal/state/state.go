@@ -5,7 +5,7 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
@@ -33,7 +33,7 @@ type State interface {
 	DeleteVersions(binaries ...config.Binary) error
 }
 
-func NewCache(log *logrus.Logger, localRoot string, settings *config.State) Cache {
+func NewCache(log *zap.Logger, localRoot string, settings *config.State) Cache {
 	cache := &fileSystem{
 		log:             log,
 		refreshInterval: settings.RefreshInterval,

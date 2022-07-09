@@ -9,20 +9,15 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Invoke(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
+func Invoke(cOpts *commonOpts) *cobra.Command {
 	opts := &invokeOptions{
-		commonOpts: commonOpts{
-			log:    log,
-			config: conf,
-			env:    env,
-		},
+		commonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -43,7 +38,7 @@ about how the current environment is determined please see '%s env --help'.`, co
 }
 
 type invokeOptions struct {
-	commonOpts
+	*commonOpts
 
 	tool    string
 	version string
@@ -60,14 +55,21 @@ func registerInvokeFlags(cmd *cobra.Command, opts *invokeOptions) {
 const invokeExitCode = 128 // Used to differentiate from exit codes from an invoked process.
 
 func (o *invokeOptions) invoke() error {
+	if o.tool == "" {
+		o.log.Error("No tool was specified.")
+		return errors.New("no tool set")
+	}
+	log := o.log.With(zap.String("tool-name", o.tool))
+
 	version := o.version
 	if version == "" {
 		version = o.env[o.tool].Version
 	}
 	if version == "" {
-		o.log.Errorf("%q was not found or could not be resolved to a version to use", o.tool)
+		log.Error("Tool was not found or could not be resolved to a version to use")
 		os.Exit(invokeExitCode)
 	}
+	log = log.With(zap.String("tool-version", version))
 
 	// Ensure we have the tool available to run.
 	dl := &downloadOptions{
@@ -79,7 +81,7 @@ func (o *invokeOptions) invoke() error {
 	}
 	local, remote, source, err := dl.setupBackends()
 	if err != nil {
-		o.log.Errorf("Unable to fetch tool: %v", err)
+		log.Error("Failed to prepare storage backends.", zap.Error(err))
 		os.Exit(invokeExitCode)
 	}
 	path, err := dl.getToolBinary(local, remote, source, config.Binary{
@@ -89,8 +91,10 @@ func (o *invokeOptions) invoke() error {
 		Arch:     config.CurrentArch(),
 	})
 	if err != nil {
+		log.Error("Failed to fetch tool.", zap.Error(err))
 		return err
 	}
+	log = log.With(zap.String("binary-path", path))
 
 	// Ideally we would be using a syscall.Exec() here to simply replace the driver process with the
 	// target binary one. However... this is not cross-platform compatible as this pattern is not
@@ -103,13 +107,14 @@ func (o *invokeOptions) invoke() error {
 
 	done := make(chan struct{})
 	sigs := make(chan os.Signal, 1)
-	go invokeSignalForwarder(o.log, cmd, sigs, done)
-
+	go invokeSignalForwarder(log, cmd, sigs, done)
 	signal.Notify(sigs)
+
+	log.Debug("Invoking tool binary.")
 	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if !errors.As(err, &exitErr) {
-			o.log.WithError(err).Errorf("Failed to invoke the target binary %q.", path)
+			log.Error("Failed to invoke the tool binary.", zap.Error(err))
 			os.Exit(invokeExitCode)
 			return err
 		}
@@ -118,12 +123,13 @@ func (o *invokeOptions) invoke() error {
 	close(done) // This should result in an os.Exit() call from the signal forwarder.
 
 	time.Sleep(1 * time.Second)
-	o.log.Errorf("Unexpected failure to exit %q.", config.DriverName)
+	log.Error("Unexpected failure to shut down binary via signal forwarder.")
 	os.Exit(invokeExitCode)
 	return nil
 }
 
-func invokeSignalForwarder(log *logrus.Logger, cmd *exec.Cmd, sigs chan os.Signal, done chan struct{}) {
+func invokeSignalForwarder(log *zap.Logger, cmd *exec.Cmd, sigs chan os.Signal, done chan struct{}) {
+	log.Debug("Starting signal forwarder.")
 	for {
 		select {
 		case sig, ok := <-sigs:
@@ -131,9 +137,10 @@ func invokeSignalForwarder(log *logrus.Logger, cmd *exec.Cmd, sigs chan os.Signa
 				log.Error("Unexpected closure of signal forwarding.")
 				os.Exit(invokeExitCode)
 			}
+			log.Debug("Received signal. Forwarding it to the binary.", zap.Stringer("signal", sig))
 
 			if sig == os.Interrupt {
-				go invokeTimeBomb(log, cmd, done)
+				go invokeTimeBomb(log, done)
 
 				if runtime.GOOS == "windows" {
 					// Interrupt forwarding does not exist as a concept on Windows and hence we
@@ -148,34 +155,37 @@ func invokeSignalForwarder(log *logrus.Logger, cmd *exec.Cmd, sigs chan os.Signa
 			close(sigs)
 			<-sigs
 			if cmd.ProcessState != nil {
+				log.Debug("Tool process exited.", zap.Int("exit-code", cmd.ProcessState.ExitCode()))
 				os.Exit(cmd.ProcessState.ExitCode())
 			} else {
-				log.Errorf("Unable to determine the exit status of the invocation of %v.", cmd.Args)
+				log.Error("Unable to determine the exit status of the invocation.")
 				os.Exit(invokeExitCode)
 			}
 		}
 	}
 }
 
-func invokeTimeBomb(log *logrus.Logger, cmd *exec.Cmd, done chan struct{}) {
+func invokeTimeBomb(log *zap.Logger, done chan struct{}) {
 	const gracePeriod = 30 * time.Second
 
+	log = log.With(zap.Duration("grace-period", gracePeriod))
+	log.Debug("Staring interrupt time-bomb.")
 	select {
 	case <-done:
 		return
 	case <-time.After(gracePeriod):
-		log.Warnf("Invocation of %q failed to exit after %v. Forcefully exiting the %q driver.", cmd.Args[0], gracePeriod, config.DriverName)
+		log.Warn("Tool failed to exit after receiving interrupt. Forcefully exiting the driver.")
 		os.Exit(invokeExitCode)
 	}
 }
 
-func invokeForwardSignal(log *logrus.Logger, cmd *exec.Cmd, sig os.Signal) {
+func invokeForwardSignal(log *zap.Logger, cmd *exec.Cmd, sig os.Signal) {
 	defer func() {
 		if p := recover(); p != nil {
-			log.Debugf("Recovered from panic while forwarding %v to the invoked binary.", sig)
+			log.Debug("Recovered from panic while forwarding signal to the invoked binary.", zap.Stringer("signal", sig))
 		}
 	}()
 	if err := cmd.Process.Signal(sig); err != nil {
-		log.WithError(err).Debugf("Could not forward %v to the invoked binary.", sig)
+		log.Debug("Could not forward signal to the invoked binary.", zap.Stringer("signal", sig), zap.Error(err))
 	}
 }

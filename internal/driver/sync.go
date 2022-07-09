@@ -9,11 +9,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
 const (
@@ -21,13 +20,9 @@ const (
 	syncModeShim  = "shim"
 )
 
-func Sync(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
+func Sync(cOpts *commonOpts) *cobra.Command {
 	opts := &syncOptions{
-		commonOpts: commonOpts{
-			log:    log,
-			config: conf,
-			env:    env,
-		},
+		commonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -63,18 +58,20 @@ func registerSyncFlags(cmd *cobra.Command, opts *syncOptions) {
 }
 
 type syncOptions struct {
-	commonOpts
+	*commonOpts
 
 	mode  string
 	tools []string
 }
 
 func (o *syncOptions) sync() error {
+	log := o.log.With(zap.String("mode", o.mode))
+
 	switch o.mode {
 	case syncModeFetch, syncModeShim:
-		o.log.Debugf("Subscribing in %q mode.", o.mode)
+		log.Debug("Syncing tools.")
 	default:
-		o.log.Errorf("Unknown sync mode %q.", o.mode)
+		log.Error("Unknown sync mode.")
 		return fmt.Errorf("unknown sync mode %q", o.mode)
 	}
 
@@ -82,12 +79,13 @@ func (o *syncOptions) sync() error {
 		for name := range o.env {
 			o.tools = append(o.tools, name)
 		}
-		o.log.Debug("No tools were specified. Subscribing to all tools registered in the current environment.")
+		log.Info("No tools were specified. Syncing all tools registered in the current environment.")
 	}
 	if len(o.tools) == 0 {
-		o.log.Warn("No shims were written as no tools are registered in the current environment.")
+		log.Warn("No tools were synced as none are registered in the current environment.")
 		return nil
 	}
+	log = log.With(zap.Strings("tools", o.tools))
 
 	if err := o.syncInitShimFolder(); err != nil {
 		return err
@@ -96,7 +94,7 @@ func (o *syncOptions) sync() error {
 	var errs []error
 	for _, name := range o.tools {
 		if _, ok := o.env[name]; !ok {
-			errs = append(errs, fmt.Errorf("failed to subscribe to %q, tool not known in current environment", name))
+			errs = append(errs, fmt.Errorf("can not create shim for tool %q that is unknown in current environment", name))
 			continue
 		}
 		if err := o.syncCreateShim(name); err != nil {
@@ -104,14 +102,17 @@ func (o *syncOptions) sync() error {
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to subscribe to tools: %v", errs)
+		log.Error("Failed to create shims for some tools.", zap.Errors("subscribe-errors", errs))
+		return fmt.Errorf("failed to create shims for some tools: %v", errs)
 	}
+	log.Debug("Successfully created shims for all tools.")
 
 	// Exit early if we are not fetching binaries.
 	if o.mode != syncModeFetch {
 		return nil
 	}
 
+	log.Debug("Downloading binaries for tools to sync.")
 	for _, name := range o.tools {
 		dl := &downloadOptions{
 			commonOpts: o.commonOpts,
@@ -124,18 +125,21 @@ func (o *syncOptions) sync() error {
 			return err
 		}
 	}
+	log.Debug("Successfully completed tool sync.")
 	return nil
 }
 
 func (o *syncOptions) syncInitShimFolder() error {
 	subscriptionsPath := o.subscriptionDir()
+	log := o.log.With(zap.String("subscriptions-path", subscriptionsPath))
+
 	if _, err := os.Stat(subscriptionsPath); err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			o.log.WithError(err).Error("Could not assert existence of subscriptions folder.")
+			log.Error("Could not assert existence of subscriptions folder.", zap.Error(err))
 			return err
 		}
 		if err = os.MkdirAll(subscriptionsPath, 0o755); err != nil {
-			o.log.WithError(err).Error("Could not create subscriptions folder.")
+			log.Error("Could not create subscriptions folder.", zap.Error(err))
 			return err
 		}
 	}
@@ -146,7 +150,7 @@ func (o *syncOptions) syncInitShimFolder() error {
 			return nil
 		}
 	}
-	o.log.Warnf(
+	o.log.Sugar().Warnf(
 		"Please add %q to your 'PATH' environment variable, preferably at the front, to start using new subscriptions.",
 		subscriptionsPath,
 	)
@@ -162,22 +166,26 @@ func (o *syncOptions) syncCreateShim(name string) error {
 %s invoke --tool=%s -- "$@"
 `
 	)
+	log := o.log.With(zap.String("tool-name", name))
 
 	invoker := config.DriverName
 	if name == config.DriverName {
 		// We protect against infinite loops. Version-management should not be done via the same
 		// system as it causes a bootstrap problem.
+		log.Error("Can not create shim for tool with the same name as the driver.")
 		return fmt.Errorf("can not create shim for tool with the same name as the driver %q", config.DriverName)
 	}
 
 	switch runtime.GOOS {
 	case "windows":
 		if err := o.syncWriteShim(name+".cmd", fmt.Sprintf(cmdShimTemplate, invoker, name)); err != nil {
+			log.Error("Failed to write CMD shim.", zap.Error(err))
 			return err
 		}
 		fallthrough
 	default:
 		if err := o.syncWriteShim(name, fmt.Sprintf(shellShimTemplate, invoker, name)); err != nil {
+			log.Error("Failed to write shell shim", zap.Error(err))
 			return err
 		}
 	}
@@ -200,26 +208,26 @@ func (o *syncOptions) syncWriteShim(name string, content string) error {
 
 	shim, err := ioutil.TempFile(shimDir, name)
 	if err != nil {
-		o.log.WithError(err).Errorf("Failed to open a temporary file to write shim for tool %q.", name)
+		o.log.Error("Failed to open a temporary file to write shim.", zap.Error(err))
 		return err
 	}
 
 	if _, err = shim.WriteString(content); err != nil {
-		o.log.WithError(err).Errorf("Unable to write shim file for %q.", name)
+		o.log.Error("Unable to write shim file.", zap.Error(err))
 		return err
 	} else if err = shim.Close(); err != nil {
-		o.log.WithError(err).Errorf("Unable to close temporary shim file for %q.", name)
+		o.log.Error("Unable to close temporary shim file.", zap.Error(err))
 		return err
 	} else if err = os.Chmod(shim.Name(), 0o755); err != nil {
-		o.log.WithError(err).Error("Unable to make the temporary shim file executable.")
+		o.log.Error("Unable to make the temporary shim file executable.", zap.Error(err))
 		return err
 	}
 
 	if err = os.Rename(shim.Name(), filepath.Join(shimDir, name)); err != nil {
-		o.log.WithError(err).Error("Unable to move temporary shim file to final path.")
+		o.log.Error("Unable to move temporary shim file to final path.", zap.Error(err))
 		return err
 	}
-	o.log.Debugf("Wrote the subscription shim for %q to %q", name, filepath.Join(shimDir, name))
+	o.log.Debug("Successfully wrote subscription shim.")
 	return nil
 }
 

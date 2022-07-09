@@ -3,20 +3,12 @@ package main
 import (
 	"errors"
 
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-
-	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/environment"
 )
 
-func Versions(log *logrus.Logger, conf *config.Global, env environment.Environment) *cobra.Command {
+func Versions(cOpts *commonOpts) *cobra.Command {
 	opts := &versionOpts{
-		commonOpts: commonOpts{
-			log:    log,
-			config: conf,
-			env:    env,
-		},
+		commonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -40,7 +32,7 @@ func registerVersionFlags(cmd *cobra.Command, opts *versionOpts) {
 }
 
 type versionOpts struct {
-	commonOpts
+	*commonOpts
 
 	tool  string
 	count int

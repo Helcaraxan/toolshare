@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,7 +36,7 @@ type State struct {
 	RefreshInterval time.Duration `yaml:"refresh_interval"`
 }
 
-func Parse(log *logrus.Logger, conf *Global) error {
+func Parse(log *zap.Logger, conf *Global) error {
 	if conf == nil {
 		return errors.New("can not parse configuration into nil struct")
 	}
@@ -53,7 +53,7 @@ func Parse(log *logrus.Logger, conf *Global) error {
 			return err
 		}
 	}
-	log.Debugf("Parsed configuration:\n%+v", spew.Sdump(conf))
+	log.Sugar().Debugf("Parsed configuration:\n%+v", spew.Sdump(conf))
 	return nil
 }
 

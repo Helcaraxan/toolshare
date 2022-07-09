@@ -9,13 +9,13 @@ import (
 	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 type git struct {
-	log *logrus.Logger
+	log *zap.Logger
 	url string
 }
 
@@ -114,7 +114,7 @@ func (s *git) createLocalCheckout() (repo *gogit.Repository, state billy.Filesys
 		Depth:         1,
 	})
 	if err != nil {
-		s.log.WithError(err).Errorf("Failed to clone %q.", s.url)
+		s.log.Error("Failed to clone git state.", zap.String("remote-url", s.url), zap.Error(err))
 		return nil, nil, err
 	}
 	return repo, state, nil
@@ -123,22 +123,22 @@ func (s *git) createLocalCheckout() (repo *gogit.Repository, state billy.Filesys
 func (s *git) commitAndPush(repo *gogit.Repository, message string) error {
 	wt, err := repo.Worktree()
 	if err != nil {
-		s.log.WithError(err).Error("Failed to determine the git worktree.")
+		s.log.Error("Failed to determine the git worktree.", zap.Error(err))
 		return err
 	}
 
 	if err = wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
-		s.log.WithError(err).Error("Failed to stage all modified state files.")
+		s.log.Error("Failed to stage all modified state files.", zap.Error(err))
 		return err
 	}
 
 	if _, err = wt.Commit(message, &gogit.CommitOptions{}); err != nil {
-		s.log.WithError(err).Error("Failed to commit modified state files.")
+		s.log.Error("Failed to commit modified state files.", zap.Error(err))
 		return err
 	}
 
 	if err = repo.Push(&gogit.PushOptions{}); err != nil {
-		s.log.WithError(err).Error("Failed to push state file changes to the remote state.")
+		s.log.Error("Failed to push state file changes to the remote state.", zap.Error(err))
 		return err
 	}
 	return nil
