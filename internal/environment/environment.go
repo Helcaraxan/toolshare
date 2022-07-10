@@ -44,7 +44,7 @@ func GetEnvironment(conf *config.Global, env Environment) error {
 		}
 		cwd = filepath.Dir(cwd)
 	}
-	for _, p := range config.GetConfigDirs() {
+	for _, p := range config.AllDirs() {
 		candidatePaths = append(candidatePaths, filepath.Join(p, envFileName))
 	}
 

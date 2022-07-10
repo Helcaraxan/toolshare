@@ -111,7 +111,7 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{platform}", "{arch}", "{tool}{exe}"}
 
 	local = backend.NewFileSystem(o.logBuilder, &backend.FileSystemConfig{
-		FilePathTemplate: filepath.Join(append([]string{config.GetStorageDir()}, cacheURLTemplate...)...),
+		FilePathTemplate: filepath.Join(append([]string{config.StorageDir()}, cacheURLTemplate...)...),
 	}, false)
 
 	if o.config.RemoteCache != nil {

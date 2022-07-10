@@ -232,5 +232,5 @@ func (o *syncOptions) syncWriteShim(name string, content string) error {
 }
 
 func (o *syncOptions) subscriptionDir() string {
-	return filepath.Join(config.GetUserConfigDir(), "subscriptions")
+	return filepath.Join(config.UserDir(), "subscriptions")
 }

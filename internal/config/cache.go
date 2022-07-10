@@ -6,21 +6,31 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type cache struct {
+type Cache struct {
 	cacheContent
 }
 
 type cacheContent struct {
-	PathPrefix string `yaml:"file_root"`
+	PathPrefix string `yaml:"path_prefix"`
 
 	GCSBucket string `yaml:"gcs_bucket"`
 	HTTPSHost string `yaml:"https_host"`
 	S3Bucket  string `yaml:"s3_bucket"`
 }
 
-func (c *cache) UnmarshalYAML(value *yaml.Node) error {
+func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
 	if err := value.Decode(&c.cacheContent); err != nil {
-		return nil
+		return err
+	}
+	all := map[string]interface{}{}
+	if err := value.Decode(&all); err != nil {
+		return err
+	}
+	for _, k := range []string{"path_prefix", "gcs_bucket", "https_host", "s3_bucket"} {
+		delete(all, k)
+	}
+	if len(all) > 0 {
+		return errors.New("unknown fields present in cache configuration")
 	}
 
 	var hostCount int

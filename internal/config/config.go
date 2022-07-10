@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
@@ -19,15 +20,11 @@ const (
 )
 
 type Global struct {
-	RemoteCache *RemoteCache `yaml:"remote_cache"`
-	State       *State       `yaml:"state"`
-
 	ForcePinned    bool `yaml:"force_pinned"`
 	DisableSources bool `yaml:"disable_sources"`
-}
 
-type RemoteCache struct {
-	cache
+	RemoteCache *Cache `yaml:"remote_cache"`
+	State       *State `yaml:"state"`
 }
 
 type State struct {
@@ -41,7 +38,7 @@ func Parse(log *zap.Logger, conf *Global) error {
 		return errors.New("can not parse configuration into nil struct")
 	}
 
-	for _, p := range GetConfigDirs() {
+	for _, p := range AllDirs() {
 		raw, err := os.ReadFile(filepath.Join(p, configFileName))
 		if errors.Is(err, os.ErrNotExist) {
 			continue
@@ -49,7 +46,8 @@ func Parse(log *zap.Logger, conf *Global) error {
 			return err
 		}
 
-		if err = yaml.Unmarshal(raw, conf); err != nil {
+		dec := yaml.NewDecoder(bytes.NewBuffer(raw))
+		if err = dec.Decode(conf); err != nil {
 			return err
 		}
 	}
@@ -57,7 +55,7 @@ func Parse(log *zap.Logger, conf *Global) error {
 	return nil
 }
 
-func GetStorageDir() string {
+func StorageDir() string {
 	switch runtime.GOOS {
 	case "darwin":
 		return filepath.Join("/var/tmp", DriverName)
@@ -70,20 +68,20 @@ func GetStorageDir() string {
 	}
 }
 
-// We need the config directories in reverse-order of priority such that we can safely unmarshal
-// them in order into the same target struct and guarantee the expected semantics.
-func GetConfigDirs() []string {
+func AllDirs() []string {
+	// We need the config directories in reverse-order of priority such that we can safely unmarshal
+	// them in order into the same target struct and guarantee the expected semantics.
 	var dirs []string
-	if p := GetUserConfigDir(); p != "" {
+	if p := UserDir(); p != "" {
 		dirs = append(dirs, p)
 	}
-	if p := GetSystemConfigDir(); p != "" {
+	if p := SystemDir(); p != "" {
 		dirs = append(dirs, p)
 	}
 	return dirs
 }
 
-func GetSystemConfigDir() string {
+func SystemDir() string {
 	switch runtime.GOOS {
 	case "darwin", "linux":
 		return filepath.Join("/etc", DriverName)
@@ -94,7 +92,7 @@ func GetSystemConfigDir() string {
 	}
 }
 
-func GetUserConfigDir() string {
+func UserDir() string {
 	switch runtime.GOOS {
 	case "linux":
 		if configPath, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
