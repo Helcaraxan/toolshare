@@ -45,16 +45,21 @@ var (
 	}
 )
 
-type Builder struct {
+type Builder interface {
+	SetDomainLevel(domain string, level zapcore.Level)
+	Domain(domain Domain) *zap.Logger
+}
+
+type builder struct {
 	log          *zap.Logger
 	defaultLevel zapcore.Level
 	domainLevels map[Domain]zapcore.Level
 	cache        map[Domain]*zap.Logger
 }
 
-func NewBuilder(out zapcore.WriteSyncer) *Builder {
+func NewBuilder(out zapcore.WriteSyncer) Builder {
 	enc := newEncoder()
-	return &Builder{
+	return &builder{
 		log:          zap.New(zapcore.NewCore(enc, out, zapcore.DebugLevel)),
 		defaultLevel: zap.InfoLevel,
 		domainLevels: map[Domain]zapcore.Level{},
@@ -62,7 +67,7 @@ func NewBuilder(out zapcore.WriteSyncer) *Builder {
 	}
 }
 
-func (b *Builder) SetDomainLevel(domain string, level zapcore.Level) {
+func (b *builder) SetDomainLevel(domain string, level zapcore.Level) {
 	d := domainFromString[domain]
 	switch d {
 	case UnknownDomain:
@@ -76,11 +81,11 @@ func (b *Builder) SetDomainLevel(domain string, level zapcore.Level) {
 	}
 }
 
-func (b *Builder) Domain(domain Domain) *zap.Logger {
+func (b *builder) Domain(domain Domain) *zap.Logger {
 	return b.logger(domain)
 }
 
-func (b *Builder) logger(domain Domain) *zap.Logger {
+func (b *builder) logger(domain Domain) *zap.Logger {
 	if _, ok := b.cache[domain]; !ok {
 		targetLevel := b.defaultLevel
 		if lvl, ok := b.domainLevels[domain]; ok {
@@ -90,3 +95,12 @@ func (b *Builder) logger(domain Domain) *zap.Logger {
 	}
 	return b.cache[domain]
 }
+
+type testBuilder struct{}
+
+func NewTestBuilder() Builder {
+	return &testBuilder{}
+}
+
+func (b *testBuilder) SetDomainLevel(_ string, _ zapcore.Level) {}
+func (b *testBuilder) Domain(domain Domain) *zap.Logger         { return zap.NewNop() }

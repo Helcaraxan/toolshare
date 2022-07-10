@@ -28,7 +28,7 @@ type S3 struct {
 	S3Config
 }
 
-func NewS3(logBuilder *logger.Builder, c *S3Config) *S3 {
+func NewS3(logBuilder logger.Builder, c *S3Config) *S3 {
 	return &S3{
 		log:      logBuilder.Domain(logger.S3Domain).With(zap.String("s3-bucket", c.S3Bucket)),
 		timeout:  time.Minute,

@@ -14,7 +14,7 @@ import (
 )
 
 type commonOpts struct {
-	logBuilder *logger.Builder
+	logBuilder logger.Builder
 	log        *zap.Logger
 	config     *config.Global
 	env        environment.Environment

@@ -33,7 +33,7 @@ type FileSystem struct {
 	FileSystemConfig
 }
 
-func NewFileSystem(logBuilder *logger.Builder, c *FileSystemConfig, inMem bool) *FileSystem {
+func NewFileSystem(logBuilder logger.Builder, c *FileSystemConfig, inMem bool) *FileSystem {
 	var fs billy.Filesystem
 	if inMem {
 		fs = memfs.New()
@@ -55,7 +55,12 @@ func (s *FileSystem) Path(b config.Binary) string {
 func (s *FileSystem) Fetch(b config.Binary) ([]byte, error) {
 	p := s.instantiateTemplate(b, s.FilePathTemplate)
 	log := s.log.With(zap.Stringer("tool", b), zap.String("local-path", p))
-	raw, err := os.ReadFile(p)
+	fd, err := s.storage.Open(p)
+	if err != nil {
+		log.Error("Failed to open tool binary file.", zap.Error(err))
+		return nil, err
+	}
+	raw, err := io.ReadAll(fd)
 	if err != nil {
 		log.Error("Failed to read content of tool binary file.", zap.Error(err))
 		return nil, err
@@ -75,11 +80,11 @@ func (s *FileSystem) Store(b config.Binary, content []byte) error {
 		return errFailed
 	}
 
-	if err := os.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+	if err := s.storage.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
 		return err
 	}
 
-	w, err := os.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0o755)
+	w, err := s.storage.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0o755)
 	if err != nil {
 		return err
 	}

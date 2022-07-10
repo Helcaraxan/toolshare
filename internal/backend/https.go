@@ -27,7 +27,7 @@ type HTTPS struct {
 	HTTPSConfig
 }
 
-func NewHTTPS(logBuilder *logger.Builder, c *HTTPSConfig) *HTTPS {
+func NewHTTPS(logBuilder logger.Builder, c *HTTPSConfig) *HTTPS {
 	return &HTTPS{
 		log:         logBuilder.Domain(logger.HTTPSDomain),
 		timeout:     time.Minute,

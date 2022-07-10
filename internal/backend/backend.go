@@ -164,7 +164,7 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 
 	case strings.HasSuffix(srcPath, ".tar.gz"):
 		log.Debug("Applying a GZIP decoder on the fetched content.")
-		rd, err = gzip.NewReader(rd)
+		rd, err = gzip.NewReader(bytes.NewBuffer(srcRaw))
 		if err != nil {
 			log.Error("Failed to open fetched content with a GZIP reader.", zap.Error(err))
 			return nil, fmt.Errorf("failed to open gzip reader for fetched content: %w", err)
@@ -173,17 +173,22 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 
 	case strings.HasSuffix(srcPath, ".tar"):
 		log.Debug("Reading the fetched content as a TAR archive.")
-		var hdr *tar.Header
+		if rd == nil {
+			rd = bytes.NewBuffer(srcRaw)
+		}
 		tr := tar.NewReader(rd)
+
+		var hdr *tar.Header
+		hdr, err = tr.Next()
 		for err == nil {
-			hdr, err = tr.Next()
 			if hdr.Name == archivePath {
 				break
 			}
+			hdr, err = tr.Next()
 		}
-		if err != nil && !errors.Is(err, io.EOF) {
+		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			log.Error("Failed to search archive for path.", zap.Error(err))
-			return nil, fmt.Errorf("failed to search for path %q fetched content: %w", archivePath, err)
+			return nil, fmt.Errorf("failed to search for path %q in fetched content: %w", archivePath, err)
 		} else if hdr == nil {
 			log.Error("Path not found in archive.")
 			return nil, fmt.Errorf("failed to find path %q in fetched content: %w", archivePath, err)

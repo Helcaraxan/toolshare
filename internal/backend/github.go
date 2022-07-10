@@ -39,7 +39,7 @@ type GitHub struct {
 	GitHubConfig
 }
 
-func NewGitHub(logBuilder *logger.Builder, c *GitHubConfig) *GitHub {
+func NewGitHub(logBuilder logger.Builder, c *GitHubConfig) *GitHub {
 	return &GitHub{
 		log:          logBuilder.Domain(logger.GitHubDomain).With(zap.Stringer("github-repo", c)),
 		timeout:      time.Minute,

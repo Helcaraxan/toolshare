@@ -10,6 +10,7 @@ import (
 
 	"cloud.google.com/go/storage"
 	"go.uber.org/zap"
+	"google.golang.org/api/option"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/logger"
@@ -33,7 +34,7 @@ type GCS struct {
 	GCSConfig
 }
 
-func NewGCS(logBuilder *logger.Builder, c *GCSConfig) *GCS {
+func NewGCS(logBuilder logger.Builder, c *GCSConfig) *GCS {
 	return &GCS{
 		log:       logBuilder.Domain(logger.GCSDomain).With(zap.String("gcs-bucket", c.GCSBucket)),
 		timeout:   time.Minute,
@@ -47,7 +48,7 @@ func (s *GCS) Fetch(b config.Binary) ([]byte, error) {
 
 	log := s.log.With(zap.Stringer("tool", b))
 
-	c, err := storage.NewClient(ctx, nil)
+	c, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadOnly))
 	if err != nil {
 		log.Error("Unable to set up a GCS storage client.", zap.Error(err))
 		return nil, err
@@ -82,7 +83,7 @@ func (s *GCS) Store(b config.Binary, content []byte) error {
 
 	log := s.log.With(zap.Stringer("tool", b))
 
-	c, err := storage.NewClient(ctx, nil)
+	c, err := storage.NewClient(ctx, option.WithScopes(storage.ScopeReadWrite))
 	if err != nil {
 		log.Error("Unable to set up a GCS storage client.", zap.Error(err))
 		return err

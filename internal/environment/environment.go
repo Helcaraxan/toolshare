@@ -101,7 +101,7 @@ func mergeEnvironment(conf *config.Global, env Environment, path string, content
 	return nil
 }
 
-func (e Environment) Source(logBuilder *logger.Builder, tool string) backend.Storage {
+func (e Environment) Source(logBuilder logger.Builder, tool string) backend.Storage {
 	sc := e[tool].Source
 	if sc == nil {
 		return nil
