@@ -14,7 +14,17 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-const stdTemplate = "{tool}_{version}_{platform}_{arch}{exe}"
+const stdTestTemplate = "{tool}_{version}_{platform}_{arch}{exe}"
+
+var (
+	stdTestBinary = config.Binary{
+		Tool:     "test-tool",
+		Version:  "v1.2.3",
+		Platform: config.PlatformLinux,
+		Arch:     config.ArchX64,
+	}
+	stdTestBinaryContent = []byte("tool-binary-content")
+)
 
 func TestInstantiateTemplate(t *testing.T) {
 	t.Parallel()
@@ -49,51 +59,51 @@ func TestInstantiateTemplate(t *testing.T) {
 			out: "my-template/with_a.test-tool@placeholder",
 		},
 		"DarwinARM64": {
-			in:  stdTemplate,
+			in:  stdTestTemplate,
 			bin: testBin(config.PlatformDarwin, config.ArchARM64),
 			out: "test-tool_v1.2.3_darwin_arm64",
 		},
 		"LinuxARM32": {
-			in:  stdTemplate,
+			in:  stdTestTemplate,
 			bin: testBin(config.PlatformLinux, config.ArchARM32),
 			out: "test-tool_v1.2.3_linux_arm32",
 		},
 		"WindowsX86": {
-			in:  stdTemplate,
+			in:  stdTestTemplate,
 			bin: testBin(config.PlatformWindows, config.ArchX86),
 			out: "test-tool_v1.2.3_windows_x86.exe",
 		},
 		"DarwinX64": {
-			in:  stdTemplate,
+			in:  stdTestTemplate,
 			bin: testBin(config.PlatformDarwin, config.ArchX64),
 			out: "test-tool_v1.2.3_darwin_x86_64",
 		},
 		"DarwinARM64Mappings": {
-			in:       stdTemplate,
+			in:       stdTestTemplate,
 			bin:      testBin(config.PlatformDarwin, config.ArchARM64),
 			mappings: TemplateMappings{Darwin: strPtr("macos"), ARM64: strPtr("arm-64")},
 			out:      "test-tool_v1.2.3_macos_arm-64",
 		},
 		"LinuxARM32Mappings": {
-			in:       stdTemplate,
+			in:       stdTestTemplate,
 			bin:      testBin(config.PlatformLinux, config.ArchARM32),
 			mappings: TemplateMappings{Linux: strPtr("unix"), ARM32: strPtr("armv1")},
 			out:      "test-tool_v1.2.3_unix_armv1",
 		},
 		"WindowsX86Mappings": {
-			in:       stdTemplate,
+			in:       stdTestTemplate,
 			bin:      testBin(config.PlatformWindows, config.ArchX86),
 			mappings: TemplateMappings{Windows: strPtr("win11"), X86: strPtr("x86_32")},
 			out:      "test-tool_v1.2.3_win11_x86_32.exe",
 		},
 		"DarwinX64Mappings": {
-			in:       stdTemplate,
+			in:       stdTestTemplate,
 			bin:      testBin(config.PlatformDarwin, config.ArchX64),
 			mappings: TemplateMappings{Darwin: strPtr("osx"), X8664: strPtr("amd64")},
 			out:      "test-tool_v1.2.3_osx_amd64",
 		},
 		"NonStandardPlatformArch": {
-			in:  stdTemplate,
+			in:  stdTestTemplate,
 			bin: testBin(config.Platform("solaris"), config.Arch("rv64i")),
 			out: "test-tool_v1.2.3_solaris_rv64i",
 		},
@@ -112,14 +122,11 @@ func TestInstantiateTemplate(t *testing.T) {
 }
 
 func TestArchiveExtractionNoTemplate(t *testing.T) {
-	var (
-		conf    = &CommonConfig{}
-		content = []byte("tool-binary-content")
-	)
+	conf := &CommonConfig{}
 
-	b, err := conf.extractFromArchive(zap.NewNop(), content, "my-tool", config.Binary{})
+	b, err := conf.extractFromArchive(zap.NewNop(), stdTestBinaryContent, "test-tool", config.Binary{})
 	require.NoError(t, err)
-	assert.Equal(t, content, b)
+	assert.Equal(t, stdTestBinaryContent, b)
 }
 
 func TestArchiveExtractionUnknownFormat(t *testing.T) {
@@ -135,36 +142,30 @@ func TestArchiveExtractionZIP(t *testing.T) {
 
 	var (
 		testArchive bytes.Buffer
-		testContent = []byte("tool-binary-bytes")
 		conf        = &CommonConfig{ArchivePathTemplate: "{platform}/{arch}/{tool}"}
-		bin         = config.Binary{
-			Tool:     "my-tool",
-			Platform: config.PlatformLinux,
-			Arch:     config.ArchX64,
-		}
 	)
 
-	b, err := conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", bin)
+	b, err := conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", stdTestBinary)
 	require.Error(t, err)
 	assert.Nil(t, b)
 
 	archiveWriter := zip.NewWriter(&testArchive)
 	require.NoError(t, archiveWriter.Close())
-	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", bin)
+	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", stdTestBinary)
 	require.Error(t, err)
 	assert.Nil(t, b)
 
 	testArchive.Reset()
 	archiveWriter = zip.NewWriter(&testArchive)
-	contentWriter, err := archiveWriter.Create("linux/x86_64/my-tool")
+	contentWriter, err := archiveWriter.Create("linux/x86_64/test-tool")
 	require.NoError(t, err)
-	_, err = contentWriter.Write(testContent)
+	_, err = contentWriter.Write(stdTestBinaryContent)
 	require.NoError(t, err)
 	require.NoError(t, archiveWriter.Close())
 
-	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", bin)
+	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.zip", stdTestBinary)
 	require.NoError(t, err)
-	assert.Equal(t, testContent, b)
+	assert.Equal(t, stdTestBinaryContent, b)
 }
 
 func TestArchiveExtractionGzipTAR(t *testing.T) {
@@ -172,29 +173,23 @@ func TestArchiveExtractionGzipTAR(t *testing.T) {
 
 	var (
 		testArchive bytes.Buffer
-		testContent = []byte("tool-binary-bytes")
 		conf        = &CommonConfig{ArchivePathTemplate: "{platform}/{arch}/{tool}"}
-		bin         = config.Binary{
-			Tool:     "my-tool",
-			Platform: config.PlatformLinux,
-			Arch:     config.ArchX64,
-		}
 	)
 
-	b, err := conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", bin)
+	b, err := conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", stdTestBinary)
 	require.Error(t, err)
 	assert.Nil(t, b)
 
 	archiveWriter := tar.NewWriter(&testArchive)
 	require.NoError(t, archiveWriter.Close())
-	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", bin)
+	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", stdTestBinary)
 	require.Error(t, err)
 	assert.Nil(t, b)
 
 	testArchive.Reset()
 	archiveWriter = tar.NewWriter(gzip.NewWriter(&testArchive))
 	require.NoError(t, archiveWriter.Close())
-	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", bin)
+	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", stdTestBinary)
 	require.Error(t, err)
 	assert.Nil(t, b)
 
@@ -202,16 +197,16 @@ func TestArchiveExtractionGzipTAR(t *testing.T) {
 	compressor := gzip.NewWriter(&testArchive)
 	archiveWriter = tar.NewWriter(compressor)
 	require.NoError(t, archiveWriter.WriteHeader(&tar.Header{
-		Name: "linux/x86_64/my-tool",
-		Size: int64(len(testContent)),
+		Name: "linux/x86_64/test-tool",
+		Size: int64(len(stdTestBinaryContent)),
 		Mode: 0o755,
 	}))
-	_, err = archiveWriter.Write(testContent)
+	_, err = archiveWriter.Write(stdTestBinaryContent)
 	require.NoError(t, err)
 	require.NoError(t, archiveWriter.Close())
 	require.NoError(t, compressor.Close())
 
-	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", bin)
+	b, err = conf.extractFromArchive(zap.NewNop(), testArchive.Bytes(), "archive.tar.gz", stdTestBinary)
 	require.NoError(t, err)
-	assert.Equal(t, testContent, b)
+	assert.Equal(t, stdTestBinaryContent, b)
 }

@@ -35,14 +35,32 @@ func (c GitHubConfig) String() string {
 type GitHub struct {
 	log     *zap.Logger
 	timeout time.Duration
+	client  *github.Client
 
 	GitHubConfig
 }
 
 func NewGitHub(logBuilder logger.Builder, c *GitHubConfig) *GitHub {
+	var (
+		err    error
+		client *github.Client
+	)
+
+	log := logBuilder.Domain(logger.GitHubDomain).With(zap.Stringer("github-repo", c))
+	if c.GitHubBaseURL == "" {
+		client = github.NewClient(http.DefaultClient)
+	} else {
+		client, err = github.NewEnterpriseClient(c.GitHubBaseURL, c.GitHubBaseURL, http.DefaultClient)
+		if err != nil {
+			log.Error("Failed to initialise new GitHub Enterprise client.", zap.Error(err))
+			panic(err)
+		}
+	}
+
 	return &GitHub{
-		log:          logBuilder.Domain(logger.GitHubDomain).With(zap.Stringer("github-repo", c)),
+		log:          log,
 		timeout:      time.Minute,
+		client:       client,
 		GitHubConfig: *c,
 	}
 }
@@ -52,27 +70,15 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	defer cancel()
 
 	log := s.log.With(zap.Stringer("tool", b))
-
-	var err error
-	var c *github.Client
-	if s.GitHubBaseURL == "" {
-		c = github.NewClient(http.DefaultClient)
-	} else {
-		c, err = github.NewEnterpriseClient(s.GitHubBaseURL, s.GitHubBaseURL, http.DefaultClient)
-		if err != nil {
-			log.Error("Failed to initialise new GitHub Enterprise client.", zap.Error(err))
-			return nil, err
-		}
-	}
-
 	rs := strings.Split(s.GitHubSlug, "/")
 	if len(rs) != 2 {
+		log.Error("Invalid repo slug.", zap.String("slug", s.GitHubSlug))
 		return nil, fmt.Errorf("repo slug %q is invalid as it does not contain an owner and repo name", s.GitHubSlug)
 	}
 	page := 1
 	var gr *github.RepositoryRelease
 	for {
-		releases, resp, listErr := c.Repositories.ListReleases(ctx, rs[0], rs[1], &github.ListOptions{
+		releases, resp, listErr := s.client.Repositories.ListReleases(ctx, rs[0], rs[1], &github.ListOptions{
 			Page:    page,
 			PerPage: 50,
 		})
@@ -118,7 +124,7 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	}
 
 	log.Debug("Downloading the release asset.")
-	dl, _, err := c.Repositories.DownloadReleaseAsset(ctx, rs[0], rs[1], a.GetID(), http.DefaultClient)
+	dl, _, err := s.client.Repositories.DownloadReleaseAsset(ctx, rs[0], rs[1], a.GetID(), http.DefaultClient)
 	if err != nil {
 		log.Error("Could not get download handle for the release asset.", zap.Error(err))
 		return nil, fmt.Errorf("failed to get link to asset %q from release %q in repository %q: %w", assetName, b.Version, s.GitHubSlug, err)

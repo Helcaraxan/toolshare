@@ -9,7 +9,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
@@ -40,22 +39,15 @@ func TestHTTPS(t *testing.T) {
 	}))
 	t.Cleanup(testServer.Close)
 
-	https := NewHTTPS(logger.NewTestBuilder(), &HTTPSConfig{HTTPSURLTemplate: testServer.URL + "/" + stdTemplate})
-	bin := config.Binary{
-		Tool:     "test-tool",
-		Version:  "v1.2.3",
-		Platform: config.PlatformLinux,
-		Arch:     config.ArchX64,
-	}
-	binContent := []byte("tool-binary-content")
+	https := NewHTTPS(logger.NewTestBuilder(), &HTTPSConfig{HTTPSURLTemplate: testServer.URL + "/" + stdTestTemplate})
 
-	_, err := https.Fetch(bin)
+	_, err := https.Fetch(stdTestBinary)
 	assert.Error(t, err)
 
-	err = https.Store(bin, binContent)
+	err = https.Store(stdTestBinary, stdTestBinaryContent)
 	require.NoError(t, err)
 
-	b, err := https.Fetch(bin)
+	b, err := https.Fetch(stdTestBinary)
 	require.NoError(t, err)
-	assert.Equal(t, binContent, b)
+	assert.Equal(t, stdTestBinaryContent, b)
 }
