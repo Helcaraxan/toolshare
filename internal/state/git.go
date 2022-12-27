@@ -6,39 +6,39 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-git/v5"
+	gogit "github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-type gitState struct {
-	log *logrus.Logger
+type git struct {
+	log *zap.Logger
 	url string
 }
 
-func (s *gitState) Fetch(target billy.Filesystem) error {
+func (s *git) Fetch(target billy.Filesystem) error {
 	_, state, err := s.createLocalCheckout()
 	if err != nil {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
 	return tempState.Fetch(target)
 }
 
-func (s *gitState) RecommendVersion(binary types.Binary) error {
+func (s *git) RecommendVersion(binary config.Binary) error {
 	repo, state, err := s.createLocalCheckout()
 	if err != nil {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -49,7 +49,7 @@ func (s *gitState) RecommendVersion(binary types.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Recommend version %q for %q.", binary.Version, binary.Tool))
 }
 
-func (s *gitState) AddVersions(binaries ...types.Binary) error {
+func (s *git) AddVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}
@@ -59,7 +59,7 @@ func (s *gitState) AddVersions(binaries ...types.Binary) error {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -76,7 +76,7 @@ func (s *gitState) AddVersions(binaries ...types.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Added tool versions.\n%v", msgElts))
 }
 
-func (s *gitState) DeleteVersions(binaries ...types.Binary) error {
+func (s *git) DeleteVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
 	}
@@ -86,7 +86,7 @@ func (s *gitState) DeleteVersions(binaries ...types.Binary) error {
 		return err
 	}
 
-	tempState := &localState{
+	tempState := &fileSystem{
 		log:     s.log,
 		storage: state,
 	}
@@ -103,42 +103,42 @@ func (s *gitState) DeleteVersions(binaries ...types.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Deleted tool versions.\n%v", msgElts))
 }
 
-func (s *gitState) createLocalCheckout() (repo *git.Repository, state billy.Filesystem, err error) {
+func (s *git) createLocalCheckout() (repo *gogit.Repository, state billy.Filesystem, err error) {
 	storage := memory.NewStorage()
 	state = memfs.New()
 
-	repo, err = git.Clone(storage, state, &git.CloneOptions{
+	repo, err = gogit.Clone(storage, state, &gogit.CloneOptions{
 		URL:           s.url,
 		ReferenceName: plumbing.Master,
 		SingleBranch:  true,
 		Depth:         1,
 	})
 	if err != nil {
-		s.log.WithError(err).Errorf("Failed to clone %q.", s.url)
+		s.log.Error("Failed to clone git state.", zap.String("remote-url", s.url), zap.Error(err))
 		return nil, nil, err
 	}
 	return repo, state, nil
 }
 
-func (s *gitState) commitAndPush(repo *git.Repository, message string) error {
+func (s *git) commitAndPush(repo *gogit.Repository, message string) error {
 	wt, err := repo.Worktree()
 	if err != nil {
-		s.log.WithError(err).Error("Failed to determine the git worktree.")
+		s.log.Error("Failed to determine the git worktree.", zap.Error(err))
 		return err
 	}
 
-	if err = wt.AddWithOptions(&git.AddOptions{All: true}); err != nil {
-		s.log.WithError(err).Error("Failed to stage all modified state files.")
+	if err = wt.AddWithOptions(&gogit.AddOptions{All: true}); err != nil {
+		s.log.Error("Failed to stage all modified state files.", zap.Error(err))
 		return err
 	}
 
-	if _, err = wt.Commit(message, &git.CommitOptions{}); err != nil {
-		s.log.WithError(err).Error("Failed to commit modified state files.")
+	if _, err = wt.Commit(message, &gogit.CommitOptions{}); err != nil {
+		s.log.Error("Failed to commit modified state files.", zap.Error(err))
 		return err
 	}
 
-	if err = repo.Push(&git.PushOptions{}); err != nil {
-		s.log.WithError(err).Error("Failed to push state file changes to the remote state.")
+	if err = repo.Push(&gogit.PushOptions{}); err != nil {
+		s.log.Error("Failed to push state file changes to the remote state.", zap.Error(err))
 		return err
 	}
 	return nil

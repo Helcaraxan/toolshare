@@ -1,0 +1,2 @@
+sources:
+  template: scheme://test-tool/{os}-{arch}-{version}{exe}

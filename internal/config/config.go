@@ -1,74 +1,148 @@
 package config
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
-
-	"github.com/Helcaraxan/toolshare/internal/state"
-	"github.com/Helcaraxan/toolshare/internal/storage"
+	"github.com/davecgh/go-spew/spew"
+	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
-const DriverName = "imp-tool"
+const (
+	DriverName = "toolshare"
 
-type Settings struct {
-	DisallowUnpinned bool
-	Root             string
-	State            *state.Settings
-	Storage          *storage.Settings
+	configFileName = DriverName + "_conf.yaml"
+)
+
+type Global struct {
+	ForcePinned    bool `yaml:"force_pinned"`
+	DisableSources bool `yaml:"disable_sources"`
+
+	RemoteCache *Cache `yaml:"remote_cache"`
+	State       *State `yaml:"state"`
 }
 
-func Init(log *logrus.Logger) (*Settings, error) {
-	s := &Settings{}
-
-	v := viper.New()
-	v.SetDefault("disallow_unpinned", false)
-	v.SetDefault("root", getRoot())
-	state.InitConfiguration(v, "state")
-	storage.InitConfiguration(v, "storage")
-
-	v.SetConfigName("config")
-	v.SetConfigType("yaml")
-	if runtime.GOOS == "windows" {
-		v.AddConfigPath(filepath.Join(os.Getenv("PROGRAMDATA"), DriverName))
-		v.AddConfigPath(filepath.Join(os.Getenv("LOCALAPPDATA"), DriverName))
-	} else {
-		v.AddConfigPath(filepath.Join("/etc", DriverName))
-		v.AddConfigPath(filepath.Join(os.Getenv("HOME"), "."+DriverName))
-	}
-	v.AutomaticEnv()
-
-	if err := v.ReadInConfig(); err != nil {
-		parseErr := &viper.ConfigParseError{}
-		if errors.As(err, &viper.ConfigFileNotFoundError{}) {
-			log.Debug("No configuration file was found.")
-		} else if errors.As(err, parseErr) {
-			log.WithError(err).Error("Failed to parse the configuration file.")
-			return nil, err
-		} else {
-			log.WithError(err).Error("Could not read the configuration file.")
-			return nil, err
-		}
-	} else {
-		if err = v.Unmarshal(s); err != nil {
-			log.WithError(err).Error("Failed to unmarshal the configuration data.")
-			return nil, err
-		}
-	}
-	log.Debugf("Determined the configuration to use: %+v", s)
-
-	return s, nil
+type State struct {
+	Type            string        `yaml:"type"`
+	Local           string        `yaml:"local"`
+	RefreshInterval time.Duration `yaml:"refresh_interval"`
 }
 
-func getRoot() string {
+type Cache struct {
+	cacheContent
+}
+
+type cacheContent struct {
+	PathPrefix string `yaml:"path_prefix"`
+
+	GCSBucket string `yaml:"gcs_bucket"`
+	HTTPSHost string `yaml:"https_host"`
+	S3Bucket  string `yaml:"s3_bucket"`
+}
+
+func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
+	if err := value.Decode(&c.cacheContent); err != nil {
+		return err
+	}
+	all := map[string]interface{}{}
+	if err := value.Decode(&all); err != nil {
+		return err
+	}
+	for _, k := range []string{"path_prefix", "gcs_bucket", "https_host", "s3_bucket"} {
+		delete(all, k)
+	}
+	if len(all) > 0 {
+		return errors.New("unknown fields present in cache configuration")
+	}
+
+	var hostCount int
+	for _, h := range []*string{&c.GCSBucket, &c.HTTPSHost, &c.S3Bucket} {
+		if h != nil && *h != "" {
+			hostCount++
+		}
+	}
+	if hostCount > 1 {
+		return errors.New("Invalid cache configuration, multiple remote hosts / buckets found")
+	}
+	return nil
+}
+
+func Parse(log *zap.Logger, conf *Global) error {
+	if conf == nil {
+		return errors.New("can not parse configuration into nil struct")
+	}
+
+	for _, p := range AllDirs() {
+		raw, err := os.ReadFile(filepath.Join(p, configFileName))
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+
+		dec := yaml.NewDecoder(bytes.NewBuffer(raw))
+		if err = dec.Decode(conf); err != nil {
+			return err
+		}
+	}
+	log.Sugar().Debugf("Parsed configuration:\n%+v", spew.Sdump(conf))
+	return nil
+}
+
+func StorageDir() string {
 	switch runtime.GOOS {
+	case "darwin":
+		return filepath.Join("/var/tmp", DriverName)
+	case "linux":
+		return filepath.Join("/var/cache", DriverName)
+	case "windows":
+		return filepath.Join(os.Getenv("PROGRAMDATA"), DriverName)
+	default:
+		panic("unsupported platform")
+	}
+}
+
+func AllDirs() []string {
+	// We need the config directories in reverse-order of priority such that we can safely unmarshal
+	// them in order into the same target struct and guarantee the expected semantics.
+	var dirs []string
+	if p := UserDir(); p != "" {
+		dirs = append(dirs, p)
+	}
+	if p := SystemDir(); p != "" {
+		dirs = append(dirs, p)
+	}
+	return dirs
+}
+
+func SystemDir() string {
+	switch runtime.GOOS {
+	case "darwin", "linux":
+		return filepath.Join("/etc", DriverName)
+	case "windows":
+		return filepath.Join(os.Getenv("PROGRAMDATA"), DriverName)
+	default:
+		panic("unsupported platform")
+	}
+}
+
+func UserDir() string {
+	switch runtime.GOOS {
+	case "linux":
+		if configPath, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
+			return filepath.Join(configPath, DriverName)
+		}
+		fallthrough
+	case "darwin":
+		return filepath.Join(os.Getenv("HOME"), ".config", DriverName)
 	case "windows":
 		return filepath.Join(os.Getenv("LOCALAPPDATA"), DriverName)
 	default:
-		return filepath.Join(os.Getenv("HOME"), "."+DriverName)
+		panic("unsupported platform")
 	}
 }

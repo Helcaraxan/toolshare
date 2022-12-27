@@ -5,19 +5,18 @@ import (
 
 	"github.com/go-git/go-billy/v5"
 	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
+	"go.uber.org/zap"
 
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
 var (
 	// To guarantee that implementations remain compatible with the interface.
-	_ Cache = &localState{}
+	_ Cache = &fileSystem{}
 
-	_ State = &gitState{}
-	_ State = &httpState{}
-	_ State = &localState{}
+	_ State = &git{}
+	_ State = &http{}
+	_ State = &fileSystem{}
 )
 
 type Cache interface {
@@ -29,30 +28,20 @@ type Cache interface {
 
 type State interface {
 	Fetch(target billy.Filesystem) error
-	RecommendVersion(binary types.Binary) error
-	AddVersions(binaries ...types.Binary) error
-	DeleteVersions(binaries ...types.Binary) error
+	RecommendVersion(binary config.Binary) error
+	AddVersions(binaries ...config.Binary) error
+	DeleteVersions(binaries ...config.Binary) error
 }
 
-type Settings struct {
-	RefreshInterval time.Duration `yaml:"refreshInterval"`
-	Local           string        `yaml:"local"`
-	Type            string        `yaml:"type"`
-}
-
-func InitConfiguration(v *viper.Viper, prefix string) {
-	v.SetDefault(prefix+".type", "git")
-}
-
-func NewCache(log *logrus.Logger, localRoot string, settings *Settings) Cache {
-	cache := &localState{
+func NewCache(log *zap.Logger, localRoot string, settings *config.State) Cache {
+	cache := &fileSystem{
 		log:             log,
 		refreshInterval: settings.RefreshInterval,
 		storage:         osfs.New(localRoot),
 	}
 
 	if settings.Local != "" {
-		cache.remote = &localState{
+		cache.remote = &fileSystem{
 			log:     log,
 			storage: osfs.New(settings.Local),
 		}
@@ -63,11 +52,11 @@ func NewCache(log *logrus.Logger, localRoot string, settings *Settings) Cache {
 }
 
 type refreshState struct {
-	LastRefresh time.Time `yaml:"lastRefresh"`
+	LastRefresh time.Time `yaml:"last_refresh"`
 }
 
 type toolState struct {
 	Name               string   `yaml:"name"`
-	RecommendedVersion string   `yaml:"recommendedVersion"`
+	RecommendedVersion string   `yaml:"recommended_version"`
 	Versions           []string `yaml:"versions"`
 }

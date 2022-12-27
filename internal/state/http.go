@@ -3,26 +3,26 @@ package state
 import (
 	"github.com/go-git/go-billy/v5"
 
-	"github.com/Helcaraxan/toolshare/internal/types"
+	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-type httpState struct {
+type http struct {
 	Root string
 	URL  string
 }
 
-func (s *httpState) Fetch(target billy.Filesystem) error {
+func (s *http) Fetch(target billy.Filesystem) error {
 	return nil
 }
 
-func (s *httpState) RecommendVersion(binary types.Binary) error {
+func (s *http) RecommendVersion(binary config.Binary) error {
 	return nil
 }
 
-func (s *httpState) AddVersions(binaries ...types.Binary) error {
+func (s *http) AddVersions(binaries ...config.Binary) error {
 	return nil
 }
 
-func (s *httpState) DeleteVersions(binaries ...types.Binary) error {
+func (s *http) DeleteVersions(binaries ...config.Binary) error {
 	return nil
 }

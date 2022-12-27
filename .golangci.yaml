@@ -184,7 +184,7 @@ linters-settings:
     case:
       rules:
         json: snake
-        yaml: camel
+        yaml: snake
 
   unparam:
     # We assume that the toolshare repo is not intended to be used as a library for now.
@@ -202,6 +202,12 @@ issues:
   # excluded by default patterns execute `golangci-lint run --help`
   # exclude:
   #   - <pattern>
+
+  exclude-rules:
+    - path: \.go
+      text: color # Triggered by imports of github.com/fatih/color.
+      linters:
+        - misspell
 
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-per-linter: 0

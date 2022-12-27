@@ -1,28 +1,18 @@
-package driver
+package main
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
-	"runtime"
 	"sort"
 
-	"github.com/sirupsen/logrus"
+	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
-	"github.com/Helcaraxan/toolshare/internal/state"
 )
 
-var errFail = errors.New("failed")
-
-func NewEnvCommand(log *logrus.Logger, settings *config.Settings) *cobra.Command {
+func Env(cOpts *commonOpts) *cobra.Command {
 	opts := &envOptions{
-		log:      log,
-		settings: settings,
+		commonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -35,164 +25,72 @@ follows:
 - The list of available tools corresponds to those that have been subscribed to via a preceding call
   to the '%s subscribe' command.
 - For each tool we find the first version provided by the following steps:
-  - Recursively walking up the filesystem up to the root looking for '.toolsharerc' files containing
-    a pinned version for the tool.
-  - Looking at the user's configuration directory for a potential 'toolsharerc' file pinning a
-	version for the tool. The configuration directory is '$HOME/.config/%s' on Linux and MacOS
+  - Recursively walking up the filesystem up to the root looking for '%s.yaml' files containing
+    a pinned version for the config.
+  - Looking at the user's configuration directory for a potential 'global.yaml' file pinning a
+	version for the config. The configuration directory is '$HOME/.config/%s' on Linux and MacOS
 	and '%%LOCALAPPDATA%%/%s' on Windows.
-  - Looking for a system-level configuration file pinning a version for the tool. This is
+  - Looking for a system-level configuration file pinning a version for the config. This is
 	'/etc/%s/toolsharerc' on Linux and MacOS and '%%PROGRAMDATA%%/%s/toolsharerc on
 	Windows.
   - If, and only if, running unpinned versions is not prohibited by the local configuration we check
-    the global state for the default version.`, config.DriverName, config.DriverName, config.DriverName, config.DriverName, config.DriverName),
+    the global state for the default version, if one is available.`, config.DriverName, config.DriverName, config.DriverName, config.DriverName, config.DriverName, config.DriverName),
 		Args: cobra.NoArgs,
-		PreRunE: func(_ *cobra.Command, _ []string) error {
-			return state.NewCache(opts.log, opts.settings.Root, opts.settings.State).Refresh(false)
-		},
 		RunE: func(_ *cobra.Command, _ []string) error {
-			return env(opts)
+			return opts.environment()
 		},
 	}
+
+	registerEnvFlags(cmd, opts)
 
 	return cmd
 }
 
 type envOptions struct {
-	log      *logrus.Logger
-	settings *config.Settings
+	*commonOpts
+
+	full bool
 }
 
-func env(opts *envOptions) error {
-	infos, err := os.ReadDir(filepath.Join(opts.settings.Root, subscribeFolder))
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			opts.log.Error("Environment is empty. No subscriptions were found.")
-		} else {
-			opts.log.WithError(err).Error("Failed to read the content of the subscriptions folder.")
-		}
-		return err
+func registerEnvFlags(cmd *cobra.Command, opts *envOptions) {
+	cmd.Flags().BoolVar(&opts.full, "full", false, "Print extra information.")
+}
+
+func (o *envOptions) environment() error {
+	defaultSource := "local"
+	if o.config.RemoteCache != nil {
+		defaultSource += " or remote"
+	}
+	defaultSource += " cache"
+
+	if len(o.env) == 0 {
+		fmt.Println("No tools are configured in the current environment.")
+		return nil
 	}
 
-	candidates := map[string]envTool{}
-	for _, info := range infos {
-		var fInfo fs.FileInfo
-		fInfo, err = info.Info()
-		if err != nil {
-			opts.log.WithError(err).Warnf("Failed to retrieve filesystem info for %q, skipping.", info.Name())
-			continue
+	var sortedTools []string
+	for tool, reg := range o.env {
+		s := defaultSource
+		if reg.Source != nil {
+			s = reg.Source.String()
 		}
-		if info.IsDir() || fInfo.Mode() != 0o755 {
-			// We don't expect any folders or non-executable files amongst the subscriptions but we
-			// skip any we encounter to be safe.
-			continue
+		info := fmt.Sprintf("%s | %s | %s", tool, reg.Version, s)
+		if o.full {
+			info += fmt.Sprintf(" | %s | %s", reg.VersionFile, reg.SourceFile)
 		}
-		if filepath.Ext(info.Name()) == "" {
-			// We don't count any executable with an extension as shims shouldn't have one.
-			candidates[filepath.Base(info.Name())] = envTool{}
-		}
+		sortedTools = append(sortedTools, info)
+	}
+	sort.Strings(sortedTools)
+
+	headerRows := []string{
+		"Tool | Pin | Source",
+		"---- | --- | ------",
+	}
+	if o.full {
+		headerRows[0] += " | Pin file | Source file"
+		headerRows[1] += " | -------- | -----------"
 	}
 
-	for tool, pin := range envPinnedTools(opts.log) {
-		if _, ok := candidates[tool]; ok {
-			candidates[tool] = pin
-		}
-	}
-
-	if !opts.settings.DisallowUnpinned {
-		s := state.NewCache(opts.log, opts.settings.Root, opts.settings.State)
-		for tool, env := range candidates {
-			if env.version == "" {
-				if env.version, err = s.RecommendedVersion(tool); err != nil {
-					return err
-				}
-				env.source = "recommended version from global state"
-			}
-		}
-	}
-
-	tools := envTools([]envTool{})
-	for tool, env := range candidates {
-		if env.version != "" {
-			tools = append(tools, envTool{
-				tool:    tool,
-				version: env.version,
-				source:  env.source,
-			})
-		}
-	}
-	sort.Sort(tools)
-
-	for _, tool := range tools {
-		fmt.Println(tool)
-	}
+	fmt.Println(columnize.SimpleFormat(append(headerRows, sortedTools...)))
 	return nil
 }
-
-func envPinnedTools(log *logrus.Logger) map[string]envTool {
-	tools := map[string]envTool{}
-
-	wd, err := os.Getwd()
-	if err != nil {
-		log.WithError(err).Warn("Failed to determine the current path.")
-		return tools
-	}
-
-	for wd != filepath.Dir(wd) {
-		envReadPinFile(log, filepath.Join(wd, ".toolsharerc"), tools)
-		wd = filepath.Dir(wd)
-	}
-
-	switch runtime.GOOS {
-	case "windows":
-		envReadPinFile(log, filepath.Join(os.Getenv("LOCALAPPDATA"), config.DriverName, "toolsharerc"), tools)
-		envReadPinFile(log, filepath.Join(os.Getenv("PROGRAMDATA"), config.DriverName, "toolsharerc"), tools)
-	default:
-		envReadPinFile(log, filepath.Join(os.Getenv("HOME"), ".config", config.DriverName, "toolsharerc"), tools)
-		envReadPinFile(log, filepath.Join("/etc", config.DriverName, "toolsharerc"), tools)
-	}
-
-	return tools
-}
-
-func envReadPinFile(log *logrus.Logger, path string, tools map[string]envTool) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return
-		}
-		log.Warnf("Failed to read potential pin file at %q.", path)
-		return
-	}
-
-	pins := &config.PinFile{}
-	if err = yaml.Unmarshal(b, pins); err != nil {
-		log.WithError(err).Warnf("Failed to unmarshal pin file at %q.", path)
-		return
-	}
-
-	for _, pin := range pins.PinnedTools {
-		if _, ok := tools[pin.Tool]; !ok {
-			tools[pin.Tool] = envTool{
-				tool:    pin.Tool,
-				version: pin.Version,
-				source:  fmt.Sprintf("pinned in %q", path),
-			}
-		}
-	}
-}
-
-type envTool struct {
-	tool    string
-	version string
-	source  string
-}
-
-func (t *envTool) String() string {
-	return fmt.Sprintf("%s @ %s - %s", t.tool, t.version, t.source)
-}
-
-type envTools []envTool
-
-func (t envTools) Len() int               { return len(t) }
-func (t envTools) Swap(i int, j int)      { t[i], t[j] = t[j], t[i] }
-func (t envTools) Less(i int, j int) bool { return t[i].tool < t[j].tool }

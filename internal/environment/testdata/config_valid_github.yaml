@@ -1,0 +1,12 @@
+sources:
+  my-tool-plain:
+    github_slug: repo/tool-plain
+    github_release_asset_template: test-tool_{os}-{arch}-{version}{exe}
+  my-tool-archive:
+    github_slug: repo/tool-archive
+    github_release_asset_template: test-tool_{os}-{arch}-{version}.tar.gz
+    github_archive_path_template: bin/test-tool{exe}
+  my-tool-enterprise:
+    github_base_url: https://git.my-enterprise.io
+    github_slug: repo/tool-enterprise
+    github_release_asset_template: test-tool_{os}-{arch}-{version}{exe}
