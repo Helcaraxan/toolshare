@@ -6,7 +6,7 @@
 new system**.
 
 This mainly involves setting up the folder and file structure that is used for binary caching.  Alternatively it is
-possible to invoke `toolshare init` to run or rerun the initialisation explicitly. This might help recover a defectuous
+possible to invoke `toolshare init` to run or rerun the initialisation explicitly. This might help recover a defective
 setup if manual changes have been made to the files that `toolshare` uses.
 
 When used as `toolshare init --force` it results in a clean-slate setup and the deletion of any pre-existing files and
@@ -21,11 +21,12 @@ the list of all the tools for which `toolshare` should manage the version when i
 environment.
 
 Just like folder-trees can be nested, environments can be too. As a general rule of thumb the configurations of nested
-environments are merged, with _the innermost taking piority_, in order to determine what action `toolshare` should take
+environments are merged, with _the innermost taking priority_, in order to determine what action `toolshare` should take
 when invoking a tool from a given path.
 
 Optionally one can also configure a special system-wide environment that will be always be used. When merging this
-environment is considered as the outermost one, even when a `.toolshare` file exists at the root of the current filesystem.
+environment, it is considered as the outermost one, even when a `.toolshare` file exists at the root of the current
+filesystem.
 
 ## Configuration
 
@@ -67,7 +68,7 @@ Binaries, when not yet locally cached nor available in any configured remote sto
 
 #### Path templates
 
-Regardless of the source from where a tool binary may be fetched, you will need to tell Toolshare a path at which the
+Regardless of the source from where a tool binary may be fetched, you will need to tell `toolshare` a path at which the
 specific binary for a given OS and tool version may be found. This is achieved through templated paths such as:
 
 ```text
@@ -100,7 +101,8 @@ sources:
 #### GitHub sources
 
 To fetch a tool from GitHub there are two mandatory source configuration elements: the repo slug and the release-asset
-template. The former to know the GitHub project from which to fetch the tool binaries, the second to define what release-asset to fetch for a given version of the tool and OS.
+template. The former to know the GitHub project from which to fetch the tool binaries, the second to define what
+release-asset to fetch for a given version of the tool and OS.
 
 Example with the `kubectx` tool:
 
@@ -116,7 +118,7 @@ sources:
 One can also observe the use of the `archive_path_template` configuration which must be used, if the downloaded asset is
 in archive form, to specify the path within the archive where to retrieve the tool binary.
 
-An additional optional GitHub-specific configuration is the `github_base_url` setting to point Toolshare to a
+An additional optional GitHub-specific configuration is the `github_base_url` setting to point `toolshare` to a
 self-hosted GitHub Enterprise server.
 
 #### HTTPS sources
@@ -138,19 +140,18 @@ sources:
 #### Filesystem sources
 
 In certain cases a tool binary might be shared via a read-only, possibly non-executable and / or network-mounted
-filesystem. In such a case, to allow for network-less low-latency execution of the tool Toolshare can be pointed to such
-a filesystem source:
+filesystem. In such a case, to allow for network-less low-latency execution of tools, `toolshare` can be used to cache
+binaries locally by pointing a source to the remote filesystem:
 
 ```yaml
 sources:
   private_tool:
-    file_path_template: file:///tool-sources/private_tool/{version}/{platform}_{arch}{exe}
+    file_path_template: file:///tool-sources/{tool}/{version}/{platform}_{arch}{exe}
 ```
 
 #### GCS or S3 cloud storage bucket sources
 
-Beyond (network-mounted) filesystem sources tool binaries may also be shared via cloud buckets. There is support for
-both GCS and S3 backends:
+Finally tool binaries may also be fetched from cloud buckets with support for both GCS and S3:
 
 ```yaml
 sources:

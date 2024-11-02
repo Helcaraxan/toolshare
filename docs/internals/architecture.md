@@ -108,8 +108,8 @@ classDiagram
 ## Sources
 
 Source are providers of tool binaries on a one-source-per-binary basis. They are strictly read-only resources. A source
-is the main abstraction and translation layer that allows to bridge the gap between the widly varying storage and naming
-schemes employed by each individual tool and `toolshare`'s well-defined internal schemes.
+is the main abstraction and translation layer that allows to bridge the gap between the wildly varying storage and
+naming schemes employed by each individual tool and `toolshare`'s well-defined internal schemes.
 
 ## Local cache
 
@@ -129,7 +129,7 @@ fetched from the source, if one is specified.
 > NOTE: Using a remote cache is entirely optional and is mainly intended for use in the context of an organisation-wide
 > deployment of `toolshare`. In such cases the remote cache may be:
 >
-> * stored on an office-based NFS share or server to improve download speed and latency.
+> * stored on an office-based NFS share to improve download speed and latency or on a cloud bucket.
 > * used to store internal tools that are not published to sources available over the public internet.
 > * used because the internet-connectivity necessary to reach sources is restricted or unavailable (air-gapped
 >   environment).
@@ -138,7 +138,7 @@ fetched from the source, if one is specified.
 
 ## State
 
-A toolshare state allows for central management of:
+A `toolshare` state allows for central management of:
 
 * recommended versions when a tool is not pinned
 * a deny-list of specific tool versions (e.g due to known vulnerabilities)

@@ -52,7 +52,7 @@ func main() {
 		"verbose",
 		"v",
 		nil,
-		"Verbose output. See 'gomod --help' for more information.",
+		"Verbose output. See 'toolshare --help' for more information.",
 	)
 	rootCmd.Flag("verbose").NoOptDefVal = "all"
 
