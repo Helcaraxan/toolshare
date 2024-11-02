@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v45/github"
+	"github.com/google/go-github/v66/github"
 	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"

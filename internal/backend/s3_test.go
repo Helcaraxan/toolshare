@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	aws_config "github.com/aws/aws-sdk-go-v2/config"
 	s3_lib "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/johannesboyne/gofakes3"
@@ -33,24 +32,24 @@ func TestS3(t *testing.T) {
 
 	s3Config, err := aws_config.LoadDefaultConfig(
 		context.TODO(),
-		aws_config.WithSharedConfigProfile("test"),
+		//aws_config.WithSharedConfigProfile("test"),
 		aws_config.WithHTTPClient(&http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 			},
 		}),
-		aws_config.WithEndpointResolverWithOptions(
-			aws.EndpointResolverWithOptionsFunc(func(_ string, _ string, _ ...interface{}) (aws.Endpoint, error) {
-				return aws.Endpoint{URL: serv.URL}, nil
-			}),
-		),
 	)
 	require.NoError(t, err)
 
 	s3 := &S3{
 		log:     zap.NewNop(),
 		timeout: 10 * time.Second,
-		client:  s3_lib.NewFromConfig(s3Config, func(o *s3_lib.Options) { o.UsePathStyle = true }),
+		client:  s3_lib.NewFromConfig(s3Config, func(o *s3_lib.Options) {
+			o.BaseEndpoint = &serv.URL
+			o.Credentials = nil
+			o.Region = "local"
+			o.UsePathStyle = true
+		}),
 		S3Config: S3Config{
 			S3Bucket:       bucketName,
 			S3PathTemplate: stdTestTemplate,
