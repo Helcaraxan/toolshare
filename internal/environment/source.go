@@ -40,10 +40,11 @@ func (s *Source) String() string {
 	}
 }
 
+//nolint:cyclop // Exhaustive case-matching trivially increases cyclomatic complexity.
 func (s *Source) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	m := map[string]interface{}{}
 	if err := unmarshal(&m); err != nil {
-		return fmt.Errorf("can not unmarshal non-mapping yaml as a source definition")
+		return ErrInvalidSource
 	}
 
 	var isFile, isGCS, isGitHub, isHTTPS, isS3 bool
@@ -64,7 +65,7 @@ func (s *Source) UnmarshalYAML(unmarshal func(interface{}) error) error {
 
 	var c backend.CommonConfig
 	if err := unmarshal(&c); err != nil {
-		return nil
+		return err
 	}
 
 	if isFile {
@@ -100,6 +101,7 @@ func (s *Source) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return s.validate()
 }
 
+//nolint:cyclop // Exhaustive case-matching trivially increases cyclomatic complexity.
 func (s *Source) validate() error {
 	var sourceConfigCount int
 	for _, si := range []interface{}{s.FileSystemConfig, s.GCSConfig, s.GitHubConfig, s.HTTPSConfig, s.S3Config} {

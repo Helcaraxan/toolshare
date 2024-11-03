@@ -14,8 +14,6 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
-var envFileName = fmt.Sprintf("%s.yaml", config.DriverName)
-
 type environmentSpec struct {
 	Pins    map[string]string  `json:"pins"`
 	Sources map[string]*Source `json:"sources"`
@@ -31,6 +29,8 @@ type ToolRegistration struct {
 }
 
 func GetEnvironment(conf *config.Global, env Environment) error {
+	envFileName := fmt.Sprintf("%s.yaml", config.DriverName)
+
 	cwd, err := os.Getwd()
 	if err != nil {
 		return err
@@ -62,7 +62,7 @@ func GetEnvironment(conf *config.Global, env Environment) error {
 		}
 	}
 
-	if !conf.ForcePinned && conf.State != nil {
+	if !conf.ForcePinned && conf.State != nil { //nolint: staticcheck // Requires further implementation
 		// TODO.
 	}
 	return nil

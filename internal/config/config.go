@@ -3,6 +3,7 @@ package config
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,6 +18,11 @@ const (
 	DriverName = "toolshare"
 
 	configFileName = DriverName + "_conf.yaml"
+)
+
+var (
+	ErrAmbiguousBackend = errors.New("ambiguous backend configuration")
+	ErrUnknownFields    = errors.New("unknown fields present in cache configuration")
 )
 
 type Global struct {
@@ -57,7 +63,7 @@ func (c *Cache) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		delete(all, k)
 	}
 	if len(all) > 0 {
-		return errors.New("unknown fields present in cache configuration")
+		return ErrUnknownFields
 	}
 	var hostCount int
 	for _, h := range []*string{&c.GCSBucket, &c.HTTPSHost, &c.S3Bucket} {
@@ -66,14 +72,14 @@ func (c *Cache) UnmarshalYAML(unmarshal func(interface{}) error) error {
 		}
 	}
 	if hostCount > 1 {
-		return errors.New("Invalid cache configuration, multiple remote hosts / buckets found")
+		return ErrAmbiguousBackend
 	}
 	return nil
 }
 
 func Parse(log *zap.Logger, conf *Global) error {
 	if conf == nil {
-		return errors.New("can not parse configuration into nil struct")
+		return fmt.Errorf("can not parse configuration into nil struct %w", errors.ErrUnsupported)
 	}
 
 	for _, p := range AllDirs() {

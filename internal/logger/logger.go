@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals // The logging package can´t work without some state.
 package logger
 
 import (
@@ -42,6 +43,7 @@ var (
 		GitHubDomain:     "github",
 		HTTPSDomain:      "https",
 		S3Domain:         "s3",
+		UnknownDomain:    "unknown",
 	}
 )
 

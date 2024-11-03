@@ -10,6 +10,8 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
+var ErrUnimplemented = errors.New("unimplemented")
+
 type HTTPSConfig struct {
 	CommonConfig
 
@@ -36,9 +38,9 @@ func NewHTTPS(logBuilder logger.Builder, c *HTTPSConfig) *HTTPS {
 }
 
 func (s *HTTPS) Fetch(b config.Binary) ([]byte, error) {
-	return nil, errors.New("not yet implemented")
+	return nil, ErrUnimplemented
 }
 
 func (s *HTTPS) Store(b config.Binary, content []byte) error {
-	return errors.New("not yet implemented")
+	return ErrUnimplemented
 }

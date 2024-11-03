@@ -42,7 +42,7 @@ func TestHTTPS(t *testing.T) {
 	https := NewHTTPS(logger.NewTestBuilder(), &HTTPSConfig{HTTPSURLTemplate: testServer.URL + "/" + stdTestTemplate})
 
 	_, err := https.Fetch(stdTestBinary)
-	assert.Error(t, err)
+	require.Error(t, err)
 
 	err = https.Store(stdTestBinary, stdTestBinaryContent)
 	require.NoError(t, err)

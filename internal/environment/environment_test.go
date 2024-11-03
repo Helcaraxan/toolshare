@@ -1,7 +1,6 @@
 package environment
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,42 +31,15 @@ func TestMergeEnvironment(t *testing.T) {
 		errType     error
 		sourceCount int
 	}{
-		"InvalidEmpty": {
-			testfile: "config_invalid_empty.yaml",
-			errType:  ErrInvalidSource,
-		},
-		"InvalidGitHubMissingSlug": {
-			testfile: "config_invalid_github_missing_slug.yaml",
-			errType:  ErrInvalidSource,
-		},
-		"InvalidGitHubMissingReleaseAsset": {
-			testfile: "config_invalid_github_missing_asset.yaml",
-			errType:  ErrInvalidSource,
-		},
-		"InvalidMixedParameters": {
-			testfile: "config_invalid_mixed.yaml",
-			errType:  ErrInvalidSource,
-		},
-		"ValidFileSystemSource": {
-			testfile:    "config_valid_filesystem.yaml",
-			sourceCount: 1,
-		},
-		"ValidGCSSource": {
-			testfile:    "config_valid_gcs.yaml",
-			sourceCount: 1,
-		},
-		"ValidGitHubSource": {
-			testfile:    "config_valid_github.yaml",
-			sourceCount: 3,
-		},
-		"ValidHTTPSSource": {
-			testfile:    "config_valid_https.yaml",
-			sourceCount: 1,
-		},
-		"ValidS3Source": {
-			testfile:    "config_valid_s3.yaml",
-			sourceCount: 1,
-		},
+		"InvalidEmpty":                     {testfile: "config_invalid_empty.yaml", errType: ErrInvalidSource},
+		"InvalidGitHubMissingSlug":         {testfile: "config_invalid_github_missing_slug.yaml", errType: ErrInvalidSource},
+		"InvalidGitHubMissingReleaseAsset": {testfile: "config_invalid_github_missing_asset.yaml", errType: ErrInvalidSource},
+		"InvalidMixedParameters":           {testfile: "config_invalid_mixed.yaml", errType: ErrInvalidSource},
+		"ValidFileSystemSource":            {testfile: "config_valid_filesystem.yaml", sourceCount: 1},
+		"ValidGCSSource":                   {testfile: "config_valid_gcs.yaml", sourceCount: 1},
+		"ValidGitHubSource":                {testfile: "config_valid_github.yaml", sourceCount: 3},
+		"ValidHTTPSSource":                 {testfile: "config_valid_https.yaml", sourceCount: 1},
+		"ValidS3Source":                    {testfile: "config_valid_s3.yaml", sourceCount: 1},
 	}
 
 	for name := range testcases {
@@ -83,7 +55,7 @@ func TestMergeEnvironment(t *testing.T) {
 			err = mergeEnvironment(&config.Global{}, env, "", raw)
 			if testcase.errType != nil {
 				require.Error(t, err)
-				assert.True(t, errors.Is(err, testcase.errType), "error %q should be of type %q", err, testcase.errType)
+				assert.ErrorIs(t, err, testcase.errType, "error %q should be of type %q", err, testcase.errType)
 			} else {
 				require.NoError(t, err)
 				assert.Len(t, env, testcase.sourceCount)

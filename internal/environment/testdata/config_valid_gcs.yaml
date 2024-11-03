@@ -1,3 +1,4 @@
+---
 sources:
   my-tool:
     gcs_bucket: my-gcs-bucket

@@ -1,6 +1,8 @@
 package driver
 
 import (
+	"errors"
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
@@ -9,6 +11,17 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/environment"
 	"github.com/Helcaraxan/toolshare/internal/logger"
+)
+
+var (
+	ErrFailedShimCreation   = errors.New("failed to create tool shim")
+	ErrInvalidCacheConfig   = errors.New("invalid cache configuration")
+	ErrInvalidToolshareShim = fmt.Errorf("can not create shim for tool with the same name as the driver %q", config.DriverName)
+	ErrNoToolSet            = errors.New("no tool set")
+	ErrUnknownSyncMode      = errors.New("unknown sync mode")
+	ErrUnknownTool          = errors.New("tool unknown in current environment")
+
+	ErrUnimplemented = errors.New("unimplemented")
 )
 
 type CommonOpts struct {

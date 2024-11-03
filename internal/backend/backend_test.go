@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals // Shared test variables.
 package backend
 
 import (
@@ -26,6 +27,7 @@ var (
 	stdTestBinaryContent = []byte("tool-binary-content")
 )
 
+//nolint:funlen // Testcase definition can´t be easily shortened.
 func TestInstantiateTemplate(t *testing.T) {
 	t.Parallel()
 
@@ -122,6 +124,8 @@ func TestInstantiateTemplate(t *testing.T) {
 }
 
 func TestArchiveExtractionNoTemplate(t *testing.T) {
+	t.Parallel()
+
 	conf := &CommonConfig{}
 
 	b, err := conf.extractFromArchive(zap.NewNop(), stdTestBinaryContent, "test-tool", config.Binary{})
@@ -130,10 +134,12 @@ func TestArchiveExtractionNoTemplate(t *testing.T) {
 }
 
 func TestArchiveExtractionUnknownFormat(t *testing.T) {
+	t.Parallel()
+
 	conf := &CommonConfig{ArchivePathTemplate: "foo/bar"}
 
 	b, err := conf.extractFromArchive(zap.NewNop(), nil, "archive.unknown", config.Binary{})
-	assert.Error(t, err)
+	require.Error(t, err)
 	assert.Nil(t, b)
 }
 

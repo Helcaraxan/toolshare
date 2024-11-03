@@ -132,6 +132,7 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 
 	var (
 		err error
+		raw []byte
 		rd  io.Reader
 	)
 
@@ -140,27 +141,7 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 
 	switch {
 	case strings.HasSuffix(srcPath, ".zip"):
-		log.Debug("Reading the fetched content as a ZIP archive.")
-		var (
-			zr *zip.Reader
-			fl fs.File
-		)
-		zr, err = zip.NewReader(bytes.NewReader(srcRaw), int64(len(srcRaw)))
-		if err != nil {
-			log.Error("Failed to open content with a ZIP reader.", zap.Error(err))
-			return nil, fmt.Errorf("failed to open fetched content as zip archive: %w", err)
-		}
-		fl, err = zr.Open(archivePath)
-		if err != nil {
-			log.Error("Path not found in archive.", zap.Error(err))
-			return nil, fmt.Errorf("failed to find path %q inside fetched content: %w", archivePath, err)
-		}
-		_, err = fl.Stat()
-		if err != nil {
-			log.Error("Failed to open archive path for reading.", zap.Error(err))
-			return nil, fmt.Errorf("failed to read file information for path %q inside fetched content: %w", archivePath, err)
-		}
-		rd = fl
+		rd, err = c.extractFromArchiveZIP(log, srcRaw, archivePath)
 
 	case strings.HasSuffix(srcPath, ".tar.gz"):
 		log.Debug("Applying a GZIP decoder on the fetched content.")
@@ -172,38 +153,68 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 		fallthrough
 
 	case strings.HasSuffix(srcPath, ".tar"):
-		log.Debug("Reading the fetched content as a TAR archive.")
-		if rd == nil {
-			rd = bytes.NewBuffer(srcRaw)
-		}
-		tr := tar.NewReader(rd)
-
-		var hdr *tar.Header
-		hdr, err = tr.Next()
-		for err == nil {
-			if hdr.Name == archivePath {
-				break
-			}
-			hdr, err = tr.Next()
-		}
-		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-			log.Error("Failed to search archive for path.", zap.Error(err))
-			return nil, fmt.Errorf("failed to search for path %q in fetched content: %w", archivePath, err)
-		} else if hdr == nil {
-			log.Error("Path not found in archive.")
-			return nil, fmt.Errorf("failed to find path %q in fetched content: %w", archivePath, err)
-		}
-		rd = tr
+		rd, err = c.extractFromArchiveTAR(log, srcRaw, archivePath, rd)
 
 	default:
-		return nil, fmt.Errorf("unrecognised archive format for downloaded content at %q", srcPath)
+		err = fmt.Errorf("unrecognised archive format: %w", errors.ErrUnsupported)
+	}
+	if err != nil {
+		return nil, err
 	}
 
-	raw, err := io.ReadAll(rd)
+	raw, err = io.ReadAll(rd)
 	if err != nil {
-		log.Error("Failed to read binary fron archive.", zap.Error(err))
+		log.Error("Failed to read binary from archive.", zap.Error(err))
 		return nil, err
 	}
 	log.Debug("Successfully read binary from archive.")
 	return raw, nil
+}
+
+func (c *CommonConfig) extractFromArchiveZIP(log *zap.Logger, srcRaw []byte, archivePath string) (io.Reader, error) {
+	log.Debug("Reading the fetched content as a ZIP archive.")
+	var (
+		zr *zip.Reader
+		fl fs.File
+	)
+	zr, err := zip.NewReader(bytes.NewReader(srcRaw), int64(len(srcRaw)))
+	if err != nil {
+		log.Error("Failed to open content with a ZIP reader.", zap.Error(err))
+		return nil, fmt.Errorf("failed to open fetched content as zip archive: %w", err)
+	}
+	fl, err = zr.Open(archivePath)
+	if err != nil {
+		log.Error("Path not found in archive.", zap.Error(err))
+		return nil, fmt.Errorf("failed to find path inside fetched content: %w", err)
+	}
+	_, err = fl.Stat()
+	if err != nil {
+		log.Error("Failed to open archive path for reading.", zap.Error(err))
+		return nil, fmt.Errorf("failed to read file information for path inside fetched content: %w", err)
+	}
+	return fl, nil
+}
+
+func (c *CommonConfig) extractFromArchiveTAR(log *zap.Logger, srcRaw []byte, archivePath string, rd io.Reader) (io.Reader, error) {
+	log.Debug("Reading the fetched content as a TAR archive.")
+	if rd == nil {
+		rd = bytes.NewBuffer(srcRaw)
+	}
+	tr := tar.NewReader(rd)
+
+	hdr, err := tr.Next()
+	for err == nil {
+		if hdr.Name == archivePath {
+			break
+		}
+		hdr, err = tr.Next()
+	}
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		log.Error("Failed to search archive for path.", zap.Error(err))
+		return nil, fmt.Errorf("failed to search for path in fetched content: %w", err)
+	} else if hdr == nil {
+		log.Error("Path not found in archive.")
+		return nil, fmt.Errorf("failed to find path in fetched content: %w", err)
+	}
+	return tr, nil
 }
