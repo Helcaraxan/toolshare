@@ -47,10 +47,9 @@ func NewGitHub(logBuilder logger.Builder, c *GitHubConfig) *GitHub {
 	)
 
 	log := logBuilder.Domain(logger.GitHubDomain).With(zap.Stringer("github-repo", c))
-	if c.GitHubBaseURL == "" {
-		client = github.NewClient(http.DefaultClient)
-	} else {
-		client, err = github.NewEnterpriseClient(c.GitHubBaseURL, c.GitHubBaseURL, http.DefaultClient)
+	client = github.NewClient(http.DefaultClient)
+	if c.GitHubBaseURL != "" {
+		client, err = client.WithEnterpriseURLs(c.GitHubBaseURL, c.GitHubBaseURL)
 		if err != nil {
 			log.Error("Failed to initialise new GitHub Enterprise client.", zap.Error(err))
 			panic(err)
