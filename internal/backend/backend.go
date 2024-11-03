@@ -41,21 +41,21 @@ var (
 )
 
 type CommonConfig struct {
-	ArchivePathTemplate string           `yaml:"archive_path_template"`
-	Mappings            TemplateMappings `yaml:"template_mappings"`
+	ArchivePathTemplate string           `json:"archive_path_template"`
+	Mappings            TemplateMappings `json:"template_mappings"`
 }
 
 type TemplateMappings struct {
 	// OS name mappings.
-	Darwin  *string `yaml:"darwin"`
-	Linux   *string `yaml:"linux"`
-	Windows *string `yaml:"windows"`
+	Darwin  *string `json:"darwin"`
+	Linux   *string `json:"linux"`
+	Windows *string `json:"windows"`
 
 	// Arch name mappings.
-	ARM32 *string `yaml:"arm32"`
-	ARM64 *string `yaml:"arm64"`
-	X86   *string `yaml:"x86_32"`
-	X8664 *string `yaml:"x86_64"`
+	ARM32 *string `json:"arm32"`
+	ARM64 *string `json:"arm64"`
+	X86   *string `json:"x86_32"`
+	X8664 *string `json:"x86_64"`
 }
 
 func (c *CommonConfig) instantiateTemplate(b config.Binary, tmpl string) string {

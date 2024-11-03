@@ -13,7 +13,7 @@ import (
 type HTTPSConfig struct {
 	CommonConfig
 
-	HTTPSURLTemplate string `yaml:"https_url_template"`
+	HTTPSURLTemplate string `json:"https_url_template"`
 }
 
 func (c HTTPSConfig) String() string {

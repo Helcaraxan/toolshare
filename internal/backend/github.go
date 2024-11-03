@@ -19,9 +19,9 @@ import (
 type GitHubConfig struct {
 	CommonConfig
 
-	GitHubSlug                 string `yaml:"github_slug"`
-	GitHubReleaseAssetTemplate string `yaml:"github_release_asset_template"`
-	GitHubBaseURL              string `yaml:"github_base_url"`
+	GitHubSlug                 string `json:"github_slug"`
+	GitHubReleaseAssetTemplate string `json:"github_release_asset_template"`
+	GitHubBaseURL              string `json:"github_base_url"`
 }
 
 func (c GitHubConfig) String() string {

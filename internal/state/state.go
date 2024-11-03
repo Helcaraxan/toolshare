@@ -52,11 +52,11 @@ func NewCache(log *zap.Logger, localRoot string, settings *config.State) Cache {
 }
 
 type refreshState struct {
-	LastRefresh time.Time `yaml:"last_refresh"`
+	LastRefresh time.Time `json:"last_refresh"`
 }
 
 type toolState struct {
-	Name               string   `yaml:"name"`
-	RecommendedVersion string   `yaml:"recommended_version"`
-	Versions           []string `yaml:"versions"`
+	Name               string   `json:"name"`
+	RecommendedVersion string   `json:"recommended_version"`
+	Versions           []string `json:"versions"`
 }

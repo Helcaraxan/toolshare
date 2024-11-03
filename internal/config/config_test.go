@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestConfigUnmarshal(t *testing.T) {
@@ -15,8 +15,7 @@ func TestConfigUnmarshal(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			dec := yaml.NewDecoder(bytes.NewBufferString(tc.content))
-			dec.KnownFields(true)
+			dec := yaml.NewDecoder(bytes.NewBufferString(tc.content), yaml.Strict())
 
 			var conf Global
 			err := dec.Decode(&conf)

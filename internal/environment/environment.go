@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gopkg.in/yaml.v3"
+	"github.com/goccy/go-yaml"
 
 	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
@@ -17,8 +17,8 @@ import (
 var envFileName = fmt.Sprintf("%s.yaml", config.DriverName)
 
 type environmentSpec struct {
-	Pins    map[string]string  `yaml:"pins"`
-	Sources map[string]*Source `yaml:"sources"`
+	Pins    map[string]string  `json:"pins"`
+	Sources map[string]*Source `json:"sources"`
 }
 
 type Environment map[string]ToolRegistration
@@ -69,8 +69,11 @@ func GetEnvironment(conf *config.Global, env Environment) error {
 }
 
 func mergeEnvironment(conf *config.Global, env Environment, path string, content []byte) error {
+	// We should preferably set the yaml.Strict() option on the decoder. This is currently not possible due to the
+	// goccy/go-yaml library not supporting partial unmarshalling in combination with yaml.Strict(). Setting the option
+	// would currently result in not being able to decode anything as we use embedded structs to account for the
+	// different backends and their specific configuration options.
 	dec := yaml.NewDecoder(bytes.NewReader(content))
-	dec.KnownFields(true)
 
 	var newEnv environmentSpec
 	if err := dec.Decode(&newEnv); err != nil {

@@ -6,10 +6,10 @@ import (
 )
 
 type Binary struct {
-	Tool     string
-	Version  string
-	Platform Platform
-	Arch     Arch
+	Tool     string   `json:"tool"`
+	Version  string   `json:"version"`
+	Platform Platform `json:"platform"`
+	Arch     Arch     `json:"arch"`
 }
 
 func (b Binary) String() string {

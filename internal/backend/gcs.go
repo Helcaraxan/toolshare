@@ -19,8 +19,8 @@ import (
 type GCSConfig struct {
 	CommonConfig
 
-	GCSBucket       string `yaml:"gcs_bucket"`
-	GCSPathTemplate string `yaml:"gcs_path_template"`
+	GCSBucket       string `json:"gcs_bucket"`
+	GCSPathTemplate string `json:"gcs_path_template"`
 }
 
 func (c GCSConfig) String() string {

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/go-git/go-billy/v5"
+	"github.com/goccy/go-yaml"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 )

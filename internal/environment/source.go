@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/Helcaraxan/toolshare/internal/backend"
 )
 
@@ -42,19 +40,15 @@ func (s *Source) String() string {
 	}
 }
 
-func (s *Source) UnmarshalYAML(value *yaml.Node) error {
-	if value.Kind != yaml.MappingNode {
+func (s *Source) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	m := map[string]interface{}{}
+	if err := unmarshal(&m); err != nil {
 		return fmt.Errorf("can not unmarshal non-mapping yaml as a source definition")
 	}
 
 	var isFile, isGCS, isGitHub, isHTTPS, isS3 bool
-	for idx := 0; idx < len(value.Content); idx += 2 {
-		if value.Content[idx].Kind != yaml.ScalarNode {
-			return fmt.Errorf("expected mapping data inside yaml object")
-		}
-
-		fe := strings.Split(value.Content[idx].Value, "_")
-		switch fe[0] {
+	for fn := range m {
+		switch strings.Split(fn, "_")[0] {
 		case "file":
 			isFile = true
 		case "gcs":
@@ -69,37 +63,37 @@ func (s *Source) UnmarshalYAML(value *yaml.Node) error {
 	}
 
 	var c backend.CommonConfig
-	if err := value.Decode(&c); err != nil {
+	if err := unmarshal(&c); err != nil {
 		return nil
 	}
 
 	if isFile {
 		s.FileSystemConfig = &backend.FileSystemConfig{CommonConfig: c}
-		if err := value.Decode(s.FileSystemConfig); err != nil {
+		if err := unmarshal(s.FileSystemConfig); err != nil {
 			return err
 		}
 	}
 	if isGCS {
 		s.GCSConfig = &backend.GCSConfig{CommonConfig: c}
-		if err := value.Decode(s.GCSConfig); err != nil {
+		if err := unmarshal(s.GCSConfig); err != nil {
 			return err
 		}
 	}
 	if isGitHub {
 		s.GitHubConfig = &backend.GitHubConfig{CommonConfig: c}
-		if err := value.Decode(s.GitHubConfig); err != nil {
+		if err := unmarshal(s.GitHubConfig); err != nil {
 			return err
 		}
 	}
 	if isHTTPS {
 		s.HTTPSConfig = &backend.HTTPSConfig{CommonConfig: c}
-		if err := value.Decode(s.HTTPSConfig); err != nil {
+		if err := unmarshal(s.HTTPSConfig); err != nil {
 			return err
 		}
 	}
 	if isS3 {
 		s.S3Config = &backend.S3Config{CommonConfig: c}
-		if err := value.Decode(s.S3Config); err != nil {
+		if err := unmarshal(s.S3Config); err != nil {
 			return err
 		}
 	}

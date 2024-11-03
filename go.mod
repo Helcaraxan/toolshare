@@ -14,6 +14,7 @@ require (
 	github.com/fsouza/fake-gcs-server v1.50.2
 	github.com/go-git/go-billy/v5 v5.6.0
 	github.com/go-git/go-git/v5 v5.12.0
+	github.com/goccy/go-yaml v1.13.3
 	github.com/google/go-github/v66 v66.0.0
 	github.com/johannesboyne/gofakes3 v0.0.0-20241026070602-0da3aa9c32ca
 	github.com/migueleliasweb/go-github-mock v1.1.0
@@ -22,7 +23,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 	google.golang.org/api v0.204.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -118,4 +118,5 @@ require (
 	google.golang.org/grpc/stats/opentelemetry v0.0.0-20240907200651-3ffb98b2c93a // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

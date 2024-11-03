@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/goccy/go-yaml"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -20,17 +20,17 @@ const (
 )
 
 type Global struct {
-	ForcePinned    bool `yaml:"force_pinned"`
-	DisableSources bool `yaml:"disable_sources"`
+	ForcePinned    bool `json:"force_pinned"`
+	DisableSources bool `json:"disable_sources"`
 
-	RemoteCache *Cache `yaml:"remote_cache"`
-	State       *State `yaml:"state"`
+	RemoteCache *Cache `json:"remote_cache"`
+	State       *State `json:"state"`
 }
 
 type State struct {
-	Type            string        `yaml:"type"`
-	Local           string        `yaml:"local"`
-	RefreshInterval time.Duration `yaml:"refresh_interval"`
+	Type            string        `json:"type"`
+	Local           string        `json:"local"`
+	RefreshInterval time.Duration `json:"refresh_interval"`
 }
 
 type Cache struct {
@@ -38,19 +38,19 @@ type Cache struct {
 }
 
 type cacheContent struct {
-	PathPrefix string `yaml:"path_prefix"`
+	PathPrefix string `json:"path_prefix"`
 
-	GCSBucket string `yaml:"gcs_bucket"`
-	HTTPSHost string `yaml:"https_host"`
-	S3Bucket  string `yaml:"s3_bucket"`
+	GCSBucket string `json:"gcs_bucket"`
+	HTTPSHost string `json:"https_host"`
+	S3Bucket  string `json:"s3_bucket"`
 }
 
-func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
-	if err := value.Decode(&c.cacheContent); err != nil {
+func (c *Cache) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	if err := unmarshal(&c.cacheContent); err != nil {
 		return err
 	}
 	all := map[string]interface{}{}
-	if err := value.Decode(&all); err != nil {
+	if err := unmarshal(&all); err != nil {
 		return err
 	}
 	for _, k := range []string{"path_prefix", "gcs_bucket", "https_host", "s3_bucket"} {
@@ -59,7 +59,6 @@ func (c *Cache) UnmarshalYAML(value *yaml.Node) error {
 	if len(all) > 0 {
 		return errors.New("unknown fields present in cache configuration")
 	}
-
 	var hostCount int
 	for _, h := range []*string{&c.GCSBucket, &c.HTTPSHost, &c.S3Bucket} {
 		if h != nil && *h != "" {

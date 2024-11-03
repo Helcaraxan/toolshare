@@ -19,7 +19,7 @@ import (
 type FileSystemConfig struct {
 	CommonConfig
 
-	FilePathTemplate string `yaml:"file_path_template"`
+	FilePathTemplate string `json:"file_path_template"`
 }
 
 func (c FileSystemConfig) String() string {

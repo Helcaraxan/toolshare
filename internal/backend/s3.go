@@ -21,8 +21,8 @@ import (
 type S3Config struct {
 	CommonConfig
 
-	S3Bucket       string `yaml:"s3_bucket"`
-	S3PathTemplate string `yaml:"s3_path_template"`
+	S3Bucket       string `json:"s3_bucket"`
+	S3PathTemplate string `json:"s3_path_template"`
 }
 
 func (c S3Config) String() string {
