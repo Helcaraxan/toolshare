@@ -1,4 +1,4 @@
-package main
+package driver
 
 import (
 	"errors"
@@ -15,9 +15,9 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-func Invoke(cOpts *commonOpts) *cobra.Command {
+func Invoke(cOpts *CommonOpts) *cobra.Command {
 	opts := &invokeOptions{
-		commonOpts: cOpts,
+		CommonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -38,7 +38,7 @@ about how the current environment is determined please see '%s env --help'.`, co
 }
 
 type invokeOptions struct {
-	*commonOpts
+	*CommonOpts
 
 	tool    string
 	version string
@@ -56,14 +56,14 @@ const invokeExitCode = 128 // Used to differentiate from exit codes from an invo
 
 func (o *invokeOptions) invoke() error {
 	if o.tool == "" {
-		o.log.Error("No tool was specified.")
+		o.Log.Error("No tool was specified.")
 		return errors.New("no tool set")
 	}
-	log := o.log.With(zap.String("tool-name", o.tool))
+	log := o.Log.With(zap.String("tool-name", o.tool))
 
 	version := o.version
 	if version == "" {
-		version = o.env[o.tool].Version
+		version = o.Env[o.tool].Version
 	}
 	if version == "" {
 		log.Error("Tool was not found or could not be resolved to a version to use")
@@ -73,7 +73,7 @@ func (o *invokeOptions) invoke() error {
 
 	// Ensure we have the tool available to run.
 	dl := &downloadOptions{
-		commonOpts: o.commonOpts,
+		CommonOpts: o.CommonOpts,
 		tool:       o.tool,
 		version:    version,
 		platforms:  []string{string(config.CurrentPlatform())},

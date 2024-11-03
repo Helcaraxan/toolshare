@@ -1,4 +1,4 @@
-package main
+package driver
 
 import (
 	"errors"
@@ -15,9 +15,9 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-func Download(cOpts *commonOpts) *cobra.Command {
+func Download(cOpts *CommonOpts) *cobra.Command {
 	opts := &downloadOptions{
-		commonOpts: cOpts,
+		CommonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -47,7 +47,7 @@ func registerDownloadFlags(cmd *cobra.Command, opts *downloadOptions) {
 }
 
 type downloadOptions struct {
-	*commonOpts
+	*CommonOpts
 
 	tool      string
 	version   string
@@ -57,10 +57,10 @@ type downloadOptions struct {
 
 func (o downloadOptions) download() error {
 	if o.tool == "" {
-		o.log.Error("No tool was specified.")
+		o.Log.Error("No tool was specified.")
 		return errors.New("no tool set")
 	}
-	log := o.log.With(zap.String("tool-name", o.tool))
+	log := o.Log.With(zap.String("tool-name", o.tool))
 
 	var archs []config.Arch
 	var platforms []config.Platform
@@ -72,7 +72,7 @@ func (o downloadOptions) download() error {
 	}
 
 	if o.version == "" {
-		o.version = o.env[o.tool].Version
+		o.version = o.Env[o.tool].Version
 		if o.version == "" {
 			log.Error("Tool was not found or could not be resolved to a version to use.")
 			os.Exit(invokeExitCode)
@@ -110,36 +110,36 @@ func (o downloadOptions) download() error {
 func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote backend.Storage, source backend.Storage, err error) {
 	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{platform}", "{arch}", "{tool}{exe}"}
 
-	local = backend.NewFileSystem(o.logBuilder, &backend.FileSystemConfig{
+	local = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
 		FilePathTemplate: filepath.Join(append([]string{config.StorageDir()}, cacheURLTemplate...)...),
 	}, false)
 
-	if o.config.RemoteCache != nil {
+	if o.Config.RemoteCache != nil {
 		switch {
-		case o.config.RemoteCache.GCSBucket != "":
-			remote = backend.NewGCS(o.logBuilder, &backend.GCSConfig{
-				GCSBucket:       o.config.RemoteCache.GCSBucket,
-				GCSPathTemplate: strings.Join(append([]string{o.config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
+		case o.Config.RemoteCache.GCSBucket != "":
+			remote = backend.NewGCS(o.LogBuilder, &backend.GCSConfig{
+				GCSBucket:       o.Config.RemoteCache.GCSBucket,
+				GCSPathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
-		case o.config.RemoteCache.HTTPSHost != "":
-			remote = backend.NewHTTPS(o.logBuilder, &backend.HTTPSConfig{
-				HTTPSURLTemplate: strings.Join(append([]string{o.config.RemoteCache.HTTPSHost, o.config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
+		case o.Config.RemoteCache.HTTPSHost != "":
+			remote = backend.NewHTTPS(o.LogBuilder, &backend.HTTPSConfig{
+				HTTPSURLTemplate: strings.Join(append([]string{o.Config.RemoteCache.HTTPSHost, o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
-		case o.config.RemoteCache.S3Bucket != "":
-			remote = backend.NewS3(o.logBuilder, &backend.S3Config{
-				S3Bucket:       o.config.RemoteCache.S3Bucket,
-				S3PathTemplate: strings.Join(append([]string{o.config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
+		case o.Config.RemoteCache.S3Bucket != "":
+			remote = backend.NewS3(o.LogBuilder, &backend.S3Config{
+				S3Bucket:       o.Config.RemoteCache.S3Bucket,
+				S3PathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
-		case o.config.RemoteCache.PathPrefix != "":
-			remote = backend.NewFileSystem(o.logBuilder, &backend.FileSystemConfig{
-				FilePathTemplate: strings.Join(append([]string{o.config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
+		case o.Config.RemoteCache.PathPrefix != "":
+			remote = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
+				FilePathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			}, false)
 		default:
 			return nil, nil, nil, errors.New("invalid remote cache configuration")
 		}
 	}
 
-	source = o.env.Source(o.logBuilder, o.tool)
+	source = o.Env.Source(o.LogBuilder, o.tool)
 
 	return local, remote, source, nil
 }
@@ -147,10 +147,10 @@ func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote b
 func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote backend.Storage, source backend.Storage, b config.Binary) (string, error) {
 	path := local.Path(b)
 
-	log := o.log.With(zap.Stringer("tool", b), zap.String("cache-path", path))
+	log := o.Log.With(zap.Stringer("tool", b), zap.String("cache-path", path))
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
-	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
+	} else if !errors.Is(err, os.ErrNotExist) {
 		log.Error("Could not determine presence of tool binary.", zap.Error(err))
 		return "", err
 	}

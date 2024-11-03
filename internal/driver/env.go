@@ -1,4 +1,4 @@
-package main
+package driver
 
 import (
 	"fmt"
@@ -10,9 +10,9 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/config"
 )
 
-func Env(cOpts *commonOpts) *cobra.Command {
+func Env(cOpts *CommonOpts) *cobra.Command {
 	opts := &envOptions{
-		commonOpts: cOpts,
+		CommonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -47,7 +47,7 @@ follows:
 }
 
 type envOptions struct {
-	*commonOpts
+	*CommonOpts
 
 	full bool
 }
@@ -58,18 +58,18 @@ func registerEnvFlags(cmd *cobra.Command, opts *envOptions) {
 
 func (o *envOptions) environment() error {
 	defaultSource := "local"
-	if o.config.RemoteCache != nil {
+	if o.Config.RemoteCache != nil {
 		defaultSource += " or remote"
 	}
 	defaultSource += " cache"
 
-	if len(o.env) == 0 {
+	if len(o.Env) == 0 {
 		fmt.Println("No tools are configured in the current environment.")
 		return nil
 	}
 
 	var sortedTools []string
-	for tool, reg := range o.env {
+	for tool, reg := range o.Env {
 		s := defaultSource
 		if reg.Source != nil {
 			s = reg.Source.String()

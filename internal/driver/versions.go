@@ -1,4 +1,4 @@
-package main
+package driver
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func Versions(cOpts *commonOpts) *cobra.Command {
+func Versions(cOpts *CommonOpts) *cobra.Command {
 	opts := &versionOpts{
-		commonOpts: cOpts,
+		CommonOpts: cOpts,
 	}
 
 	cmd := &cobra.Command{
@@ -32,7 +32,7 @@ func registerVersionFlags(cmd *cobra.Command, opts *versionOpts) {
 }
 
 type versionOpts struct {
-	*commonOpts
+	*CommonOpts
 
 	tool  string
 	count int
