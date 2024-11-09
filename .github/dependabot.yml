@@ -1,0 +1,13 @@
+---
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    assignees:
+      - Helcaraxan
+    groups:
+      "Go dependencies":
+        patterns:
+          - "*"
+    schedule:
+      interval: monthly
