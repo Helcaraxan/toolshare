@@ -58,7 +58,7 @@ type downloadOptions struct {
 func (o downloadOptions) download() error {
 	if o.tool == "" {
 		o.Log.Error("No tool was specified.")
-		return errors.New("no tool set")
+		return ErrNoToolSet
 	}
 	log := o.Log.With(zap.String("tool-name", o.tool))
 
@@ -72,14 +72,19 @@ func (o downloadOptions) download() error {
 	}
 
 	if o.version == "" {
-		o.version = o.Env[o.tool].Version
+		tool, ok := o.Env[o.tool]
+		if !ok {
+			log.Error("Tool is not ")
+			return ErrUnknownTool
+		}
+		o.version = tool.Version
 		if o.version == "" {
 			log.Error("Tool was not found or could not be resolved to a version to use.")
 			os.Exit(invokeExitCode)
 		}
 	}
 
-	local, remote, source, err := o.setupBackends()
+	backends, err := o.setupBackends()
 	if err != nil {
 		return err
 	}
@@ -93,7 +98,7 @@ func (o downloadOptions) download() error {
 				Platform: platform,
 				Arch:     arch,
 			}
-			p, err := o.getToolBinary(local, remote, source, b)
+			p, err := o.getToolBinary(backends, b)
 			if err != nil {
 				errs = append(errs, err)
 			} else {
@@ -102,52 +107,59 @@ func (o downloadOptions) download() error {
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("failed to fetch some binaries: %v", errs)
+		return fmt.Errorf("failed to fetch some binaries: %w", errors.Join(errs...))
 	}
 	return nil
 }
 
-func (o downloadOptions) setupBackends() (local backend.BinaryProvider, remote backend.Storage, source backend.Storage, err error) {
+type storages struct {
+	local  backend.BinaryProvider
+	remote backend.Storage
+	source backend.Storage
+}
+
+func (o downloadOptions) setupBackends() (*storages, error) {
 	cacheURLTemplate := []string{"v1", "{tool}", "{version}", "{platform}", "{arch}", "{tool}{exe}"}
 
-	local = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
-		FilePathTemplate: filepath.Join(append([]string{config.StorageDir()}, cacheURLTemplate...)...),
-	}, false)
+	backends := &storages{
+		local: backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
+			FilePathTemplate: filepath.Join(append([]string{config.StorageDir()}, cacheURLTemplate...)...),
+		}, false),
+		source: o.Env.Source(o.LogBuilder, o.tool),
+	}
 
 	if o.Config.RemoteCache != nil {
 		switch {
 		case o.Config.RemoteCache.GCSBucket != "":
-			remote = backend.NewGCS(o.LogBuilder, &backend.GCSConfig{
+			backends.remote = backend.NewGCS(o.LogBuilder, &backend.GCSConfig{
 				GCSBucket:       o.Config.RemoteCache.GCSBucket,
 				GCSPathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
 		case o.Config.RemoteCache.HTTPSHost != "":
-			remote = backend.NewHTTPS(o.LogBuilder, &backend.HTTPSConfig{
+			backends.remote = backend.NewHTTPS(o.LogBuilder, &backend.HTTPSConfig{
 				HTTPSURLTemplate: strings.Join(append([]string{o.Config.RemoteCache.HTTPSHost, o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
 		case o.Config.RemoteCache.S3Bucket != "":
-			remote = backend.NewS3(o.LogBuilder, &backend.S3Config{
+			backends.remote = backend.NewS3(o.LogBuilder, &backend.S3Config{
 				S3Bucket:       o.Config.RemoteCache.S3Bucket,
 				S3PathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			})
 		case o.Config.RemoteCache.PathPrefix != "":
-			remote = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
+			backends.remote = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
 				FilePathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
 			}, false)
 		default:
-			return nil, nil, nil, errors.New("invalid remote cache configuration")
+			return nil, ErrInvalidCacheConfig
 		}
 	}
 
-	source = o.Env.Source(o.LogBuilder, o.tool)
-
-	return local, remote, source, nil
+	return backends, nil
 }
 
-func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote backend.Storage, source backend.Storage, b config.Binary) (string, error) {
-	path := local.Path(b)
+func (o downloadOptions) getToolBinary(backends *storages, binary config.Binary) (string, error) {
+	path := backends.local.Path(binary)
 
-	log := o.Log.With(zap.Stringer("tool", b), zap.String("cache-path", path))
+	log := o.Log.With(zap.Stringer("tool", binary), zap.String("cache-path", path))
 	if _, err := os.Stat(path); err == nil {
 		return path, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -156,15 +168,15 @@ func (o downloadOptions) getToolBinary(local backend.BinaryProvider, remote back
 	}
 
 	var fetchErr error
-	for _, s := range []backend.Storage{remote, source} {
+	for _, s := range []backend.Storage{backends.remote, backends.source} {
 		sLog := log.With(zap.Stringer("storage", s))
 		sLog.Debug("Attempting to fetch binary from storage.")
 		if s != nil {
 			var raw []byte
-			raw, fetchErr = s.Fetch(b)
+			raw, fetchErr = s.Fetch(binary)
 			sLog.Debug("Fetched binary from storage.")
 			if fetchErr == nil {
-				if err := local.Store(b, raw); err != nil {
+				if err := backends.local.Store(binary, raw); err != nil {
 					log.Debug("Failed to store binary in local cache.", zap.Error(err))
 					return "", err
 				}

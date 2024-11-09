@@ -3,6 +3,7 @@ package backend
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,13 @@ import (
 
 	"github.com/Helcaraxan/toolshare/internal/config"
 	"github.com/Helcaraxan/toolshare/internal/logger"
+)
+
+var (
+	ErrGitHubAPIError            = errors.New("github api error")
+	ErrInvalidGitHubSlug         = errors.New("repo slug is invalid")
+	ErrUnknownGitHubRelease      = errors.New("github release does not exist")
+	ErrUnknownGitHubReleaseAsset = errors.New("github release does not contain asset")
 )
 
 type GitHubConfig struct {
@@ -69,41 +77,15 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	defer cancel()
 
 	log := s.log.With(zap.Stringer("tool", b))
-	rs := strings.Split(s.GitHubSlug, "/")
-	if len(rs) != 2 {
+	reposlug := strings.Split(s.GitHubSlug, "/")
+	if len(reposlug) != 2 {
 		log.Error("Invalid repo slug.", zap.String("slug", s.GitHubSlug))
-		return nil, fmt.Errorf("repo slug %q is invalid as it does not contain an owner and repo name", s.GitHubSlug)
-	}
-	page := 1
-	var gr *github.RepositoryRelease
-	for {
-		releases, resp, listErr := s.client.Repositories.ListReleases(ctx, rs[0], rs[1], &github.ListOptions{
-			Page:    page,
-			PerPage: 50,
-		})
-		if listErr != nil {
-			return nil, fmt.Errorf("unable to request releases page %d for %q: %w", page, s.GitHubSlug, listErr)
-		} else if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("failed to list releases page %d for %q: %s", page, s.GitHubSlug, resp.Status)
-		}
-		log.Debug("Listing GitHub releases", zap.Int("release-count", len(releases)))
-
-		for _, r := range releases {
-			if r.GetName() == b.Version {
-				gr = r
-				log.Debug("Found targeted release.")
-				break
-			}
-		}
-		if gr != nil || page == resp.LastPage {
-			break
-		}
-		page = resp.NextPage
+		return nil, ErrInvalidGitHubSlug
 	}
 
-	if gr == nil {
-		log.Error("The targeted release was not found within the GitHub repository.")
-		return nil, fmt.Errorf("repository %q does not have a release named %q", s.GitHubSlug, b.Version)
+	gr, err := s.getRelease(ctx, log, reposlug, b.Version)
+	if err != nil {
+		return nil, err
 	}
 
 	assetName := s.instantiateTemplate(b, s.GitHubReleaseAssetTemplate)
@@ -119,11 +101,11 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	}
 	if a == nil {
 		log.Error("The targeted release asset was not found within the release.")
-		return nil, fmt.Errorf("release %q of repository %q does not have an asset named %q", b.Version, s.GitHubSlug, assetName)
+		return nil, ErrUnknownGitHubReleaseAsset
 	}
 
 	log.Debug("Downloading the release asset.")
-	dl, _, err := s.client.Repositories.DownloadReleaseAsset(ctx, rs[0], rs[1], a.GetID(), http.DefaultClient)
+	dl, _, err := s.client.Repositories.DownloadReleaseAsset(ctx, reposlug[0], reposlug[1], a.GetID(), http.DefaultClient)
 	if err != nil {
 		log.Error("Could not get download handle for the release asset.", zap.Error(err))
 		return nil, fmt.Errorf("failed to get link to asset %q from release %q in repository %q: %w", assetName, b.Version, s.GitHubSlug, err)
@@ -141,4 +123,39 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 func (s *GitHub) Store(_ config.Binary, _ []byte) error {
 	s.log.Error("Cannot perform 'store' operations on a GitHub backend.")
 	return errFailed
+}
+
+func (s *GitHub) getRelease(ctx context.Context, log *zap.Logger, reposlug []string, version string) (*github.RepositoryRelease, error) {
+	page := 1
+	var gr *github.RepositoryRelease
+	for {
+		releases, resp, listErr := s.client.Repositories.ListReleases(ctx, reposlug[0], reposlug[1], &github.ListOptions{
+			Page:    page,
+			PerPage: 50,
+		})
+		if listErr != nil {
+			return nil, fmt.Errorf("unable to request releases page %d for %q: %w", page, s.GitHubSlug, listErr)
+		} else if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("failed to list releases page %d for %q: %s: %w", page, s.GitHubSlug, resp.Status, ErrGitHubAPIError)
+		}
+		log.Debug("Listing GitHub releases", zap.Int("release-count", len(releases)))
+
+		for _, r := range releases {
+			if r.GetName() == version {
+				gr = r
+				log.Debug("Found targeted release.")
+				break
+			}
+		}
+		if gr != nil || page == resp.LastPage {
+			break
+		}
+		page = resp.NextPage
+	}
+
+	if gr == nil {
+		log.Error("The targeted release was not found within the GitHub repository.")
+		return nil, ErrUnknownGitHubRelease
+	}
+	return gr, nil
 }

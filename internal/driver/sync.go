@@ -3,7 +3,6 @@ package driver
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -72,7 +71,7 @@ func (o *syncOptions) sync() error {
 		log.Debug("Syncing tools.")
 	default:
 		log.Error("Unknown sync mode.")
-		return fmt.Errorf("unknown sync mode %q", o.mode)
+		return ErrUnknownSyncMode
 	}
 
 	if len(o.tools) == 0 {
@@ -91,19 +90,18 @@ func (o *syncOptions) sync() error {
 		return err
 	}
 
-	var errs []error
+	syncFailed := false
 	for _, name := range o.tools {
 		if _, ok := o.Env[name]; !ok {
-			errs = append(errs, fmt.Errorf("can not create shim for tool %q that is unknown in current environment", name))
+			log.Error("Tool not known in current environment.", zap.String("tool", name))
+			syncFailed = true
 			continue
 		}
-		if err := o.syncCreateShim(name); err != nil {
-			errs = append(errs, err)
-		}
+		syncFailed = syncFailed || !o.syncCreateShim(name)
 	}
-	if len(errs) > 0 {
-		log.Error("Failed to create shims for some tools.", zap.Errors("subscribe-errors", errs))
-		return fmt.Errorf("failed to create shims for some tools: %v", errs)
+	if syncFailed {
+		log.Error("Failed to create shims for some tools.")
+		return ErrFailedShimCreation
 	}
 	log.Debug("Successfully created shims for all tools.")
 
@@ -157,7 +155,7 @@ func (o *syncOptions) syncInitShimFolder() error {
 	return nil
 }
 
-func (o *syncOptions) syncCreateShim(name string) error {
+func (o *syncOptions) syncCreateShim(name string) bool {
 	const (
 		cmdShimTemplate = `@ECHO OFF
 %s invoke --tool=%s -- %%*
@@ -173,40 +171,40 @@ func (o *syncOptions) syncCreateShim(name string) error {
 		// We protect against infinite loops. Version-management should not be done via the same
 		// system as it causes a bootstrap problem.
 		log.Error("Can not create shim for tool with the same name as the driver.")
-		return fmt.Errorf("can not create shim for tool with the same name as the driver %q", config.DriverName)
+		return false
 	}
 
 	switch runtime.GOOS {
 	case "windows":
 		if err := o.syncWriteShim(name+".cmd", fmt.Sprintf(cmdShimTemplate, invoker, name)); err != nil {
 			log.Error("Failed to write CMD shim.", zap.Error(err))
-			return err
+			return false
 		}
 		fallthrough
 	default:
 		if err := o.syncWriteShim(name, fmt.Sprintf(shellShimTemplate, invoker, name)); err != nil {
 			log.Error("Failed to write shell shim", zap.Error(err))
-			return err
+			return false
 		}
 	}
-	return nil
+	return true
 }
 
 // Shim-files should normally not change over time. However we want to ensure that regenerating
 // these files is safe, even when the shim-files are also being used at the same time by a different
 // process.
 //
-// It is in the the nature of shell interpreters that they may lazily read the script file. If a
-// different processes overwrites the script file at the same time this may cause an unintentional
+// It is in the nature of shell interpreters that they may lazily read the script file. If a
+// different process overwrites the script file at the same time this may cause an unintentional
 // failure. The work-around is to create a new temporary file that contains the new shim's content
 // after which we use a file rename to replace the existing shim file. This has the effect that any
 // existing file-descriptors for the old file used by shell interpreters rename valid and continue
 // to point to the old content while any new file descriptors will appropriately read the new
 // content.
-func (o *syncOptions) syncWriteShim(name string, content string) error {
+func (o *syncOptions) syncWriteShim(name, content string) error {
 	shimDir := o.subscriptionDir()
 
-	shim, err := ioutil.TempFile(shimDir, name)
+	shim, err := os.CreateTemp(shimDir, name)
 	if err != nil {
 		o.Log.Error("Failed to open a temporary file to write shim.", zap.Error(err))
 		return err

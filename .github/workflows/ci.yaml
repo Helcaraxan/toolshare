@@ -1,0 +1,51 @@
+name: Test & Build
+on:
+  - push
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        id: checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install Go
+        id: install-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Install Python
+        id: install-python
+        uses: actions/setup-python@v5
+
+      - name: Run pre-commit
+        id: install-pre-commit
+        uses: pre-commit/action@v3.0.1
+
+  build-and-test:
+    name: Build & Test
+    strategy:
+      fail-fast: false
+      matrix:
+        go-version: [stable, oldstable]
+        os: [ubuntu-latest]  # [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Code
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Install Go
+        id: install-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - run: go build .
+      - run: go test ./...

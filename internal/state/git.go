@@ -49,6 +49,7 @@ func (s *git) RecommendVersion(binary config.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Recommend version %q for %q.", binary.Version, binary.Tool))
 }
 
+//nolint:dupl // This is by design a near-copy of DeleteVersions and can´t be easily refactored.
 func (s *git) AddVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
@@ -76,6 +77,7 @@ func (s *git) AddVersions(binaries ...config.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Added tool versions.\n%v", msgElts))
 }
 
+//nolint:dupl // This is by design a near-copy of AddVersions and can´t be easily refactored.
 func (s *git) DeleteVersions(binaries ...config.Binary) error {
 	if len(binaries) == 0 {
 		return nil
@@ -103,11 +105,11 @@ func (s *git) DeleteVersions(binaries ...config.Binary) error {
 	return s.commitAndPush(repo, fmt.Sprintf("Deleted tool versions.\n%v", msgElts))
 }
 
-func (s *git) createLocalCheckout() (repo *gogit.Repository, state billy.Filesystem, err error) {
+func (s *git) createLocalCheckout() (*gogit.Repository, billy.Filesystem, error) {
 	storage := memory.NewStorage()
-	state = memfs.New()
+	state := memfs.New()
 
-	repo, err = gogit.Clone(storage, state, &gogit.CloneOptions{
+	repo, err := gogit.Clone(storage, state, &gogit.CloneOptions{
 		URL:           s.url,
 		ReferenceName: plumbing.Master,
 		SingleBranch:  true,

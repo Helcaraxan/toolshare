@@ -1,3 +1,4 @@
+//nolint:gochecknoglobals,gochecknoinits // The logging package can´t work without some state.
 package logger
 
 import (
@@ -95,13 +96,14 @@ var (
 	}
 
 	levelToColor = map[zapcore.Level]*color.Color{
-		zapcore.DPanicLevel: color.New(color.FgHiRed),
-		zapcore.PanicLevel:  color.New(color.FgHiRed),
-		zapcore.FatalLevel:  color.New(color.FgRed),
-		zapcore.ErrorLevel:  color.New(color.FgRed),
-		zapcore.WarnLevel:   color.New(color.FgYellow),
-		zapcore.InfoLevel:   color.New(color.FgBlue),
-		zapcore.DebugLevel:  color.New(color.FgMagenta),
+		zapcore.DPanicLevel:  color.New(color.FgHiRed),
+		zapcore.PanicLevel:   color.New(color.FgHiRed),
+		zapcore.FatalLevel:   color.New(color.FgRed),
+		zapcore.ErrorLevel:   color.New(color.FgRed),
+		zapcore.WarnLevel:    color.New(color.FgYellow),
+		zapcore.InfoLevel:    color.New(color.FgBlue),
+		zapcore.DebugLevel:   color.New(color.FgMagenta),
+		zapcore.InvalidLevel: color.New(color.FgHiCyan),
 	}
 )
 

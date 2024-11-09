@@ -14,8 +14,8 @@ func main() {
 	opts := driver.NewCommonOpts()
 
 	rootCmd := &cobra.Command{
-		Use:   config.DriverName,
-		Long:  `Provide and manage tool versions for reproducible outcomes.
+		Use: config.DriverName,
+		Long: `Provide and manage tool versions for reproducible outcomes.
 
 Create well-defined environments for developer and automation workflows by
 ensuring that tools are always invoked at their expected version. Eliminate

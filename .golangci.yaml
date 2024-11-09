@@ -4,7 +4,7 @@
 # options for analysis running
 run:
   # timeout for analysis, e.g. 30s, 5m, default is 1m
-  deadline: 1m
+  timeout: 1m
 
   # list of build tags, all linters use it. Default is empty list.
   # build-tags:
@@ -25,84 +25,137 @@ run:
   # skip-files:
   #   - <pattern>
 
-# linters that we should / shouldn't run
 linters:
+  # We explicitly enable only specific linters to ensure deterministic behaviour
   disable-all: true
   enable:
     - asciicheck
+    - bidichk
     - containedctx
     - contextcheck
-    - deadcode
+    - copyloopvar
+    - cyclop
     - dupl
+    - dupword
     - durationcheck
+    - err113
     - errcheck
+    - errchkjson
     - errname
     - errorlint
     - exhaustive
-    - exportloopref
+    - funlen
+    - gci
+    - gochecknoglobals
+    - gochecknoinits
+    - gochecksumtype
+    - goconst
     - gocritic
-    - gocyclo
     - godot
     - gofumpt
     - goimports
     - gosimple
     - govet
+    - inamedparam
     - ineffassign
+    - interfacebloat
+    - intrange
+    - loggercheck
+    - maintidx
+    - makezero
+    - mirror
     - misspell
+    - musttag
     - nakedret
+    - nestif
+    - nilerr
+    - nilnil
     - nolintlint
+    - nonamedreturns
+    - paralleltest
     - predeclared
-    - revive
+    - reassign
     - staticcheck
-    - structcheck
+    - tagalign
     - tagliatelle
-    - typecheck
+    - tenv
+    - testifylint
+    - thelper
+    - tparallel
     - unconvert
     - unparam
     - unused
-    - varcheck
+    - usestdlibvars
+    - whitespace
 
-# all available settings of specific linters, we can set an option for
-# a given linter even if we deactivate that same linter at runtime
 linters-settings:
+  copyloopvar:
+    check-alias: true
+
+  cyclop:
+    max-complexity: 15
+
   dupl:
-    # tokens count to trigger issue, 150 by default
-    threshold: 150
+    threshold: 100
+
+  exhaustive:
+    check:
+      - switch
+      - map
+
+  funlen:
+    ignore-comments: true
+
+  gci:
+    custom-order: true
+    sections:
+      - standard
+      - default
+      - localmodule
 
   goconst:
-    # minimal length of string constant, 3 by default
     min-len: 6
-    # minimal occurrences count to trigger, 3 by default
     min-occurrences: 5
 
   gocritic:
-    # which checks should be enabled; can't be combined with 'disabled-checks';
-    # default are: [appendAssign assignOp caseOrder dupArg dupBranchBody dupCase flagDeref
-    # ifElseChain regexpMust singleCaseSwitch sloppyLen switchTrue typeSwitchVar underef
-    # unlambda unslice rangeValCopy defaultCaseOrder];
-    #
+    # We explicitly enable only specific linters to ensure deterministic behaviour
     # List of available checks:
     # https://github.com/go-critic/go-critic/blob/master/docs/overview.md
+    disable-all: true
     enabled-checks:
       # "diagnostic" checkers
+      - appendAssign
+      - argOrder
+      - badCall
+      - badCond
+      - badSorting
       - caseOrder
+      - codegenComment
+      - commentedOutCode
+      - deferInLoop
       - deprecatedComment
       - dupArg
       - dupBranchBody
       - dupCase
       - dupSubExpr
+      - emptyDecl
+      - evalOrder
       - exitAfterDefer
       - flagDeref
       - flagName
       - mapKey
       - nilValReturn
       - offBy1
+      - sloppyLen
       - sloppyTypeAssert
       - sprintfQuotedString
+      - uncheckedInlineErr
       - unnecessaryDefer
       # "style" checkers
       - assignOp
+      - boolExprSimplify
       - captLocal
+      - commentFormatting
       - commentedOutImport
       - defaultCaseOrder
       - deferUnlambda
@@ -113,18 +166,21 @@ linters-settings:
       - hexLiteral
       - importShadow
       - initClause
-      - ioutilDeprecated
+      - methodExprCall
+      - nestingReduce
       - newDeref
+      - octalLiteral
       - preferFilepathJoin
       - ptrToRefParam
       - redundantSprint
       - regexpMust
       - singleCaseSwitch
-      - sloppyLen
+      - stringConcatSimplify
       - switchTrue
       - timeExprSimplify
       - tooManyResultsChecker
       - typeAssertChain
+      - typeDefFirst
       - typeSwitchVar
       - typeUnparen
       - underef
@@ -137,48 +193,42 @@ linters-settings:
       - appendCombine
       - equalFold
       - indexAlloc
+      - preferFprint
       - preferStringWriter
+      - rangeValCopy
       - sliceClear
       - stringXbytes
-    parameters:
-      captLocal:
-        paramsOnly: false
+    settings:
+      commentedOutCode:
+        minLength: 5
       tooManyResultsChecker:
-        maxResults: 4
-
-  gocyclo:
-    # minimal code complexity to report, 30 by default (but we recommend 10-20)
-    min-complexity: 20
+        maxResults: 3
 
   godot:
     scope: all
 
   gofumpt:
-    lang-version: "1.17"
+    extra-rules: true
 
   goimports:
-    # put imports beginning with prefix after 3rd-party packages;
-    # it's a comma-separated list of prefixes
     local-prefixes: github.com/Helcaraxan/toolshare
 
   govet:
-    # report about shadowed variables
-    check-shadowing: true
+    enable:
+      - shadow
+    settings:
+      shadow:
+        strict: true
 
   misspell:
     locale: UK
 
   nakedret:
-    # make an issue if func has more lines of code than this setting and it has naked returns; default is 30
-    max-func-lines: 0 # Warn on all naked returns.
+    max-func-lines: 0
 
   nolintlint:
-    allow-unused: false
-    allow-leading-space: false
+    require-explanation: true
     require-specific: true
-
-  staticcheck:
-    go: "1.17"
 
   tagliatelle:
     case:
@@ -190,10 +240,6 @@ linters-settings:
     # We assume that the toolshare repo is not intended to be used as a library for now.
     check-exported: true
 
-  varcheck:
-    # We assume that the toolshare repo is not intended to be used as a library for now.
-    exported-fields: true
-
 # rules to deal with reported isues
 issues:
   # List of regexps of issue texts to exclude, empty list by default.
@@ -204,16 +250,18 @@ issues:
   #   - <pattern>
 
   exclude-rules:
-    - path: \.go
-      text: color # Triggered by imports of github.com/fatih/color.
+    - path: \.go$
+      text: color  # Triggered by imports of github.com/fatih/color.
       linters:
         - misspell
-
-  # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
-  max-per-linter: 0
+    - path: \.go$
+      text: err
+      linters:
+        - govet
+    - path: \.go$
+      text: ok
+      linters:
+        - govet
 
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 0
-
-  # Show only new issues created after git revision `REV`
-  new-from-rev: "" # Show all linter errors.

@@ -1,8 +1,6 @@
 package driver
 
 import (
-	"errors"
-
 	"github.com/spf13/cobra"
 )
 
@@ -40,5 +38,5 @@ type versionOpts struct {
 
 func (o *versionOpts) versions() error {
 	// TODO - requires the use of state.
-	return errors.New("not yet implemented")
+	return ErrUnimplemented
 }

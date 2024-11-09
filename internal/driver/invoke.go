@@ -57,7 +57,7 @@ const invokeExitCode = 128 // Used to differentiate from exit codes from an invo
 func (o *invokeOptions) invoke() error {
 	if o.tool == "" {
 		o.Log.Error("No tool was specified.")
-		return errors.New("no tool set")
+		return ErrNoToolSet
 	}
 	log := o.Log.With(zap.String("tool-name", o.tool))
 
@@ -71,27 +71,8 @@ func (o *invokeOptions) invoke() error {
 	}
 	log = log.With(zap.String("tool-version", version))
 
-	// Ensure we have the tool available to run.
-	dl := &downloadOptions{
-		CommonOpts: o.CommonOpts,
-		tool:       o.tool,
-		version:    version,
-		platforms:  []string{string(config.CurrentPlatform())},
-		archs:      []string{string(config.CurrentArch())},
-	}
-	local, remote, source, err := dl.setupBackends()
+	path, err := o.ensureTool(log, version)
 	if err != nil {
-		log.Error("Failed to prepare storage backends.", zap.Error(err))
-		os.Exit(invokeExitCode)
-	}
-	path, err := dl.getToolBinary(local, remote, source, config.Binary{
-		Tool:     o.tool,
-		Version:  version,
-		Platform: config.CurrentPlatform(),
-		Arch:     config.CurrentArch(),
-	})
-	if err != nil {
-		log.Error("Failed to fetch tool.", zap.Error(err))
 		return err
 	}
 	log = log.With(zap.String("binary-path", path))
@@ -126,6 +107,32 @@ func (o *invokeOptions) invoke() error {
 	log.Error("Unexpected failure to shut down binary via signal forwarder.")
 	os.Exit(invokeExitCode)
 	return nil
+}
+
+func (o *invokeOptions) ensureTool(log *zap.Logger, version string) (string, error) {
+	dl := &downloadOptions{
+		CommonOpts: o.CommonOpts,
+		tool:       o.tool,
+		version:    version,
+		platforms:  []string{string(config.CurrentPlatform())},
+		archs:      []string{string(config.CurrentArch())},
+	}
+	backends, err := dl.setupBackends()
+	if err != nil {
+		log.Error("Failed to prepare storage backends.", zap.Error(err))
+		os.Exit(invokeExitCode)
+	}
+	path, err := dl.getToolBinary(backends, config.Binary{
+		Tool:     o.tool,
+		Version:  version,
+		Platform: config.CurrentPlatform(),
+		Arch:     config.CurrentArch(),
+	})
+	if err != nil {
+		log.Error("Failed to fetch tool.", zap.Error(err))
+		return "", err
+	}
+	return path, nil
 }
 
 func invokeSignalForwarder(log *zap.Logger, cmd *exec.Cmd, sigs chan os.Signal, done chan struct{}) {

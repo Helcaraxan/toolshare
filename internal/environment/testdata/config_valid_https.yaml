@@ -1,3 +1,4 @@
+---
 sources:
   my-tool:
     https_url_template: https://sub.domain.com/test-tool/{os}-{arch}-{version}.zip

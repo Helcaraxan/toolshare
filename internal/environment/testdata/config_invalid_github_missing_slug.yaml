@@ -1,3 +1,4 @@
+---
 sources:
   my-tool:
     github_release_asset_template: test-tool_{os}-{arch}-{version}.tar.gz
