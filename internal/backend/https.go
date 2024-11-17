@@ -2,6 +2,8 @@ package backend
 
 import (
 	"errors"
+	"io"
+	"net/http"
 	"time"
 
 	"go.uber.org/zap"
@@ -10,7 +12,10 @@ import (
 	"github.com/Helcaraxan/toolshare/internal/logger"
 )
 
-var ErrUnimplemented = errors.New("unimplemented")
+var (
+	ErrUnsupported    = errors.New("unsupported")
+	ErrHTTPStatusCode = errors.New("received a non-200 http status code")
+)
 
 type HTTPSConfig struct {
 	CommonConfig
@@ -38,9 +43,26 @@ func NewHTTPS(logBuilder logger.Builder, c *HTTPSConfig) *HTTPS {
 }
 
 func (s *HTTPS) Fetch(b config.Binary) ([]byte, error) {
-	return nil, ErrUnimplemented
+	u := s.instantiateTemplate(b, s.HTTPSURLTemplate)
+	log := s.log.With(zap.Stringer("tool", b), zap.String("url", u))
+
+	r, err := http.Get(u)
+	if err != nil {
+		log.Error("Failed to download tool source URL.", zap.Error(err))
+		return nil, err
+	} else if r.StatusCode != http.StatusOK {
+		log.Error("Download of tool source URL returned a non-200 code.", zap.Int("http-code", r.StatusCode))
+		return nil, ErrHTTPStatusCode
+	}
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Error("Failed to read full file from remote URL.", zap.Error(err))
+		return nil, err
+	}
+	return s.extractFromArchive(log, raw, u, b)
 }
 
 func (s *HTTPS) Store(b config.Binary, content []byte) error {
-	return ErrUnimplemented
+	// We deliberately do not support storage through HTTP as we do not yet provide a HTTP authentication mechanism.
+	return ErrUnsupported
 }
