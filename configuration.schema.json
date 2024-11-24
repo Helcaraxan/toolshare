@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Helcaraxan/toolshare/config.schema.json",
+  "title": "Configuration",
+  "description": "Schema for Toolshare configuration files.",
+  "type": "object",
+  "properties": {
+    "force_pinned": {
+      "description": "Disable the invocation of tools that do not have an explicit version defined through the current Toolshare environment.",
+      "type": "boolean"
+    },
+    "disable_sources": {
+      "description": "Do not allow for in-environment tool source-specifications. Requires the specification of a remote cache.",
+      "type": "boolean"
+    },
+    "remote_cache": {
+      "oneOf": [
+        {
+          "description": "Specification of a remote Toolshare cache to fetch tools from.",
+          "type": "object",
+          "properties": {
+            "path_prefix": {
+              "description": "Path prefix to add to the cache's storage backend to obtain its effective location & address.",
+              "type": "string"
+            },
+            "gcs_bucket": {
+              "description": "Name of the Google Cloud Storage bucket where the cache is stored.",
+              "type": "string"
+            },
+            "https_host": {
+              "description": "Host where the cache can be fetched from over HTTPS.",
+              "type": "string"
+            },
+            "s3_bucket": {
+              "description": "Name of the AWS S3 bucket where the cache is stored.",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "state": {
+      "description": "Specification of a Toolshare state repository to read recommended versions from.",
+      "type": "object",
+      "properties": {}
+    }
+  },
+  "dependentRequired": {
+    "disable_sources": [
+      "remote_cache"
+    ]
+  }
+}

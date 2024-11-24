@@ -1,0 +1,5 @@
+# yaml-language-server: $schema=../../../configuration.schema.json
+---
+remote_cache:
+  path_prefix: /cache-root
+  s3_bucket: my-tool-cache

@@ -1,0 +1,4 @@
+---
+remote_cache:
+  gcs_bucket: my-tool-cache
+  https_host: https://tools-cache.my-domain.com

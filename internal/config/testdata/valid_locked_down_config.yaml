@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../../../configuration.schema.json
+---
+force_pinned: true
+disable_sources: true
