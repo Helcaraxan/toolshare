@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Helcaraxan/toolshare/environment.schema.json",
+  "title": "Environment",
+  "description": "Schema for Toolshare environment specification files.",
+  "type": "object",
+  "properties": {
+    "pins": {
+      "oneOf": [
+        {
+          "description": "Mapping of tools to the version at which they should be pinned.",
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-_]+$": {
+              "description": "Version at which to pin the tool.",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "sources": {
+      "oneOf": [
+        {
+          "description": "Mapping of tools to the source from which they should be fetched.",
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9-_]+$": {
+              "oneOf": [
+                {
+                  "description": "Specification of how to fetch a tool from a locally-accessible filesystem.",
+                  "type": "object",
+                  "properties": {
+                    "file_path_template": {
+                      "type": "string",
+                      "pattern": "^file://"
+                    },
+                    "archive_path_template": {
+                      "$ref": "#/$defs/archive_path_template"
+                    },
+                    "template_mappings": {
+                      "$ref": "#/$defs/template_mappings"
+                    }
+                  },
+                  "required": [
+                    "file_path_template"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "description": "Specification of how to fetch a tool from Google Cloud Storage bucket.",
+                  "type": "object",
+                  "properties": {
+                    "gcs_bucket": {
+                      "description": "Name of the Google Cloud Storage bucket to fetch the tool from.",
+                      "type": "string"
+                    },
+                    "gcs_path_template": {
+                      "description": "Template for the object within the bucket that contains the tool.",
+                      "type": "string"
+                    },
+                    "archive_path_template": {
+                      "$ref": "#/$defs/archive_path_template"
+                    },
+                    "template_mappings": {
+                      "$ref": "#/$defs/template_mappings"
+                    }
+                  },
+                  "required": [
+                    "gcs_bucket",
+                    "gcs_path_template"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "description": "Specification of how to fetch a tool from a GitHub project's releases.",
+                  "type": "object",
+                  "properties": {
+                    "github_slug": {
+                      "description": "Slug of the repository from where to fetch the tool. Takes the form of '<user>/<project>'.",
+                      "type": "string"
+                    },
+                    "github_release_asset_template": {
+                      "description": "Template for the name of the release asset that contains the tool.",
+                      "type": "string"
+                    },
+                    "github_base_url": {
+                      "description": "Base URL to use for a tool stored on a GitHub Enterprise deployment.",
+                      "type": "string"
+                    },
+                    "archive_path_template": {
+                      "$ref": "#/$defs/archive_path_template"
+                    },
+                    "template_mappings": {
+                      "$ref": "#/$defs/template_mappings"
+                    }
+                  },
+                  "required": [
+                    "github_slug",
+                    "github_release_asset_template"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "description": "Specification of how to fetch a tool from an HTTPS location.",
+                  "type": "object",
+                  "properties": {
+                    "https_url_template": {
+                      "description": "Template of the URL from which to fetch the tool.",
+                      "type": "string",
+                      "pattern": "^https://"
+                    },
+                    "archive_path_template": {
+                      "$ref": "#/$defs/archive_path_template"
+                    },
+                    "template_mappings": {
+                      "$ref": "#/$defs/template_mappings"
+                    }
+                  },
+                  "required": [
+                    "https_url_template"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "description": "Specification of how to fetch a tool from an AWS S3 bucket.",
+                  "type": "object",
+                  "properties": {
+                    "s3_bucket": {
+                      "description": "Name of the AWS S3 bucket to fetch the tool from.",
+                      "type": "string"
+                    },
+                    "s3_path_template": {
+                      "description": "Template for the object within the bucket that contains the tool.",
+                      "type": "string"
+                    },
+                    "archive_path_template": {
+                      "$ref": "#/$defs/archive_path_template"
+                    },
+                    "template_mappings": {
+                      "$ref": "#/$defs/template_mappings"
+                    }
+                  },
+                  "required": [
+                    "s3_bucket",
+                    "s3_path_template"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "archive_path_template": {
+      "description": "Path template indicating how to extract a tool from an archive source.",
+      "type": "string"
+    },
+    "template_mappings": {
+      "description": "Alternative string values mappings for template variables.",
+      "type": "object",
+      "properties": {
+        "darwin": {
+          "description": "Alternative string to use for {platform} on OSX instead of 'darwin'.",
+          "type": "string"
+        },
+        "linux": {
+          "description": "Alternative string to use for {platform} on Linux instead of 'linux'.",
+          "type": "string"
+        },
+        "windows": {
+          "description": "Alternative string to use for {platform} on Windows instead of 'windows'.",
+          "type": "string"
+        },
+        "arm32": {
+          "description": "Alternative string to use for {arch} on ARM32 architectures instead of 'arm32'.",
+          "type": "string"
+        },
+        "arm64": {
+          "description": "Alternative string to use for {arch} on ARM64 architectures instead of 'arm64'.",
+          "type": "string"
+        },
+        "x86_32": {
+          "description": "Alternative string to use for {arch} on 32-bit x86 architectures instead of 'x86_32'.",
+          "type": "string"
+        },
+        "x86_64": {
+          "description": "Alternative string to use for {arch} on 64-bit x86 architectures instead of 'x86_64'.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

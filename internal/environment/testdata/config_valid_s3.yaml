@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../../../environment.schema.json
 ---
 sources:
   my-tool:
