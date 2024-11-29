@@ -1,0 +1,4 @@
+# yaml-language-server: $schema=../../../configuration.schema.json
+---
+remote_cache:
+  path_prefix: /mounts/nfs/tools

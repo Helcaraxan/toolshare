@@ -55,6 +55,11 @@ repos:
           - --autofix
           - --no-sort-keys
       - id: trailing-whitespace
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.4
+    hooks:
+      - id: check-metaschema
+        files: \.schema\.json$
   - repo: https://github.com/rhysd/actionlint
     rev: v1.7.3
     hooks:

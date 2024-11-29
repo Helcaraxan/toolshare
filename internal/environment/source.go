@@ -13,9 +13,9 @@ var ErrInvalidSource = errors.New("invalid source")
 
 type Source struct {
 	*backend.FileSystemConfig
-	*backend.HTTPSConfig
 	*backend.GCSConfig
 	*backend.GitHubConfig
+	*backend.HTTPSConfig
 	*backend.S3Config
 }
 

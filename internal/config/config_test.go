@@ -2,73 +2,29 @@ package config
 
 import (
 	"bytes"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/goccy/go-yaml"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-//nolint:funlen // Testcase definition can´t be easily shortened.
 func TestConfigUnmarshal(t *testing.T) {
 	t.Parallel()
 
 	unmarshalTestCases := map[string]struct {
+		testFile    string
 		expectedErr bool
-		content     string
 	}{
-		"ValidFilesystemCache": {
-			expectedErr: false,
-			content: `---
-remote_cache:
-  path_prefix: /mounts/nfs/tools
-`,
-		},
-		"ValidGCSCache": {
-			expectedErr: false,
-			content: `---
-remote_cache:
-  path_prefix: /cache-root
-  gcs_bucket: my-tool-cache
-`,
-		},
-		"ValidHTTPSCache": {
-			expectedErr: false,
-			content: `---
-remote_cache:
-  path_prefix: /cache-root
-  https_host: https://tools-cache.my-domain.com
-`,
-		},
-		"ValidS3Cache": {
-			expectedErr: false,
-			content: `---
-remote_cache:
-  path_prefix: /cache-root
-  s3_bucket: my-tool-cache
-`,
-		},
-		"ValidLockedDownConfig": {
-			expectedErr: false,
-			content: `---
-force_pinned: true
-disable_sources: true
-`,
-		},
-		"InvalidMixedCache": {
-			expectedErr: true,
-			content: `---
-remote_cache:
-  gcs_bucket: my-tool-cache
-  https_host: https://tools-cache.my-domain.com
-`,
-		},
-		"InvalidErroneousCache": {
-			expectedErr: true,
-			content: `---
-remote_cache:
-  unknown_setting: foo/bar
-`,
-		},
+		"ValidFilesystemCache":  {testFile: "valid_filesystem_cache.yaml", expectedErr: false},
+		"ValidGCSCache":         {testFile: "valid_gcs_cache.yaml", expectedErr: false},
+		"ValidHTTPSCache":       {testFile: "valid_https_cache.yaml", expectedErr: false},
+		"ValidS3Cache":          {testFile: "valid_s3_cache.yaml", expectedErr: false},
+		"ValidLockedDownConfig": {testFile: "valid_locked_down_config.yaml", expectedErr: false},
+		"InvalidMixedCache":     {testFile: "invalid_mixed_cache.yaml", expectedErr: true},
+		"InvalidErroneousCache": {testFile: "invalid_unknown_cache.yaml", expectedErr: true},
 	}
 
 	for name := range unmarshalTestCases {
@@ -76,10 +32,12 @@ remote_cache:
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			dec := yaml.NewDecoder(bytes.NewBufferString(tc.content), yaml.Strict())
+			raw, err := os.ReadFile(filepath.Join("testdata", tc.testFile))
+			require.NoError(t, err)
+			dec := yaml.NewDecoder(bytes.NewBuffer(raw), yaml.Strict())
 
 			var conf Global
-			err := dec.Decode(&conf)
+			err = dec.Decode(&conf)
 			if tc.expectedErr {
 				assert.Error(t, err)
 			} else {
