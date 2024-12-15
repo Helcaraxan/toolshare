@@ -5,5 +5,10 @@
 *.retry
 *.sublime-workspace
 *.vagrant
+
+.terraform/
+.terraform.lock.hcl
+*.tfplan
+
 bin
 toolshare

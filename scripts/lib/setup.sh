@@ -9,7 +9,10 @@ set -e -u -o pipefail
 
 # Source all Bash helper scripts.
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# shellcheck source=SCRIPTDIR/log.sh
 source "${lib_dir}/log.sh"
+# shellcheck source=SCRIPTDIR/git.sh
 source "${lib_dir}/git.sh"
 
 # Ensure a script sourcing setup.sh will always run starting with the repo root as working directory.
