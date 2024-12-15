@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck source=SCRIPTDIR/lib/setup.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib/setup.sh"
 
 command -v pre-commit >/dev/null 2>&1 || log_fatal "Ensure pre-commit is installed."

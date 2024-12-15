@@ -1,0 +1,90 @@
+name: Deploy Infra
+on:
+  - push
+
+env:
+  TF_VAR_github_owner: ${{ github.repository_owner }}
+  TF_VAR_github_owner_id: ${{ github.repository_owner_id }}
+  TF_VAR_github_slug: ${{ github.repository }}
+  TF_VAR_google_project: ${{ secrets.google_project_id }}
+
+jobs:
+  plan:
+    name: Plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout Code
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        id: install-terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.2
+
+      - name: Authenticate GCP
+        id: auth-gcp
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          workload_identity_provider: projects/${{ secrets.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
+          service_account: toolshare-ci@${{ secrets.google_project_id }}.iam.gserviceaccount.com
+
+      - name: Plan - Bootstrap
+        id: plan-bootstrap
+        run: scripts/terraform.sh terraform/bootstrap plan -out=bootstrap.tfplan
+
+      - name: Upload Artefacts
+        id: upload-artefacts
+        uses: actions/upload-artifact@v4
+        if: ${{ steps.plan-bootstrap.outputs.changes }}
+        with:
+          name: terraform-plans
+          path: "*.tfplan"
+          retention-days: 1 # We don't want to keep potentially stale plans around for long.
+          if-no-files-found: ignore
+
+    outputs:
+      bootstrap_changes: ${{ steps.plan-bootstrap.outputs.changes }}
+
+  apply:
+    name: Apply
+    needs: plan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    if: ${{ github.ref == 'refs/heads/main' && needs.plan.outputs.bootstrap_changes }}
+    steps:
+      - name: Checkout Code
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Install Terraform
+        id: install-terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.10.1
+
+      - name: Authenticate GCP
+        id: auth-gcp
+        uses: google-github-actions/auth@v2
+        with:
+          create_credentials_file: true
+          workload_identity_provider: projects/${{ secrets.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
+          service_account: toolshare-ci@${{ secrets.google_project_id }}.iam.gserviceaccount.com
+
+      - name: Download Artefacts
+        id: download-artefacts
+        uses: actions/download-artifact@v4
+        with:
+          name: terraform-plans
+
+      - name: Apply - Bootstrap
+        id: run-apply
+        if: ${{ needs.plan.outputs.bootstrap_changes }}
+        run: scripts/terraform.sh terraform/bootstrap apply -auto-approve bootstrap.tfplan
