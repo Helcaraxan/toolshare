@@ -45,7 +45,7 @@ if [[ ${action} == "plan" ]]; then
     ;;
   2)
     log_info "Terraform planning detected unapplied changes. Once this PR is merged these will be applied."
-    [[ -n ${CI:-} ]] && echo "changes=True" >>"${GITHUB_OUTPUT}"
+    [[ ${CI:-} == "true" ]] && echo "changes=true" >>"${GITHUB_OUTPUT}"
     exit_code=0
     ;;
   *)

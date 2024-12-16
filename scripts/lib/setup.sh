@@ -4,8 +4,9 @@
   exit 1
 }
 
-set -e -u -o pipefail
+# Initialize debugging first to cover all logic, including the Bash options set immediately below.
 [[ -n "${DEBUG:-}" ]] && set -x
+set -e -u -o pipefail
 
 # Source all Bash helper scripts.
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
