@@ -8,9 +8,9 @@ log_info "Using terraform version: $(terraform version)"
 
 module_root="${1?"Specify the path to the Terraform root module on which to act."}"
 action="${2?"Specify the Terraform command to run (apply | plan)."}"
-shift 2
 
 cd "${module_root}"
+module_name="$(basename "$(pwd)")"
 
 terraform init
 
@@ -18,13 +18,16 @@ tf_flags=()
 case "${action}" in
 apply)
   tf_flags+=(
+    "-auto-approve"
     "-input=false"
+    "${REPO_ROOT}/${module_name}.tfplan"
   )
   ;;
 plan)
   tf_flags+=(
     "-detailed-exitcode"
     "-input=false"
+    "-out=${REPO_ROOT}/${module_name}.tfplan"
   )
   ;;
 *)
@@ -33,7 +36,7 @@ plan)
 esac
 
 exit_code=0
-terraform "${action}" "${tf_flags[@]}" "$@" || exit_code=$?
+terraform "${action}" "${tf_flags[@]}" || exit_code=$?
 
 if [[ ${action} == "plan" ]]; then
   case "${exit_code}" in
