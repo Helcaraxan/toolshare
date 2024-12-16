@@ -37,11 +37,11 @@ jobs:
 
       - name: Plan - Bootstrap
         id: plan-bootstrap
-        run: scripts/terraform.sh terraform/bootstrap plan -out=bootstrap.tfplan
+        run: scripts/terraform.sh terraform/bootstrap plan
 
       - name: Plan - CI Infra
         id: plan-ci-infra
-        run: scripts/terraform.sh terraform/ci-infra plan -out=ci-infra.tfplan
+        run: scripts/terraform.sh terraform/ci-infra plan
 
       - name: Upload Artefacts
         id: upload-artefacts
@@ -49,7 +49,7 @@ jobs:
         if: ${{ steps.plan-bootstrap.outputs.changes || steps.plan-ci-infra.outputs.changes }}
         with:
           name: terraform-plans
-          path: terraform/**/*.tfplan
+          path: "*.tfplan"
           retention-days: 1 # We don't want to keep potentially stale plans around for long.
           if-no-files-found: ignore
 
@@ -78,7 +78,7 @@ jobs:
         id: install-terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.10.1
+          terraform_version: 1.10.2
 
       - name: Authenticate GCP
         id: auth-gcp
@@ -97,9 +97,9 @@ jobs:
       - name: Apply - Bootstrap
         id: run-apply-bootstrap
         if: ${{ needs.plan.outputs.bootstrap_changes }}
-        run: scripts/terraform.sh terraform/bootstrap apply -auto-approve bootstrap.tfplan
+        run: scripts/terraform.sh terraform/bootstrap apply -auto-approve
 
       - name: Apply - CI Infra
         id: run-apply-ci-infra
         if: ${{ needs.plan.outputs.ci_infra_changes }}
-        run: scripts/terraform.sh terraform/ci-infra apply -auto-approve ci-infra.tfplan
+        run: scripts/terraform.sh terraform/ci-infra apply -auto-approve
