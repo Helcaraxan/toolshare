@@ -90,6 +90,10 @@ jobs:
           create_credentials_file: true
           export_environment_variables: true
 
+      - name: Install gcloud
+        id: install-gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
       - name: Download Artefacts
         id: download-artefacts
         uses: actions/download-artifact@v4

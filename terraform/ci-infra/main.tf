@@ -50,7 +50,7 @@ data "archive_file" "testdata" {
 resource "null_resource" "e2e-test-artefacts" {
   provisioner "local-exec" {
     command = join(" ", [
-      "gsutil -m rsync -rd",
+      "gcloud storage rsync --delete-unmatched-destination-objects --recursive",
       "${local.repo_root}/internal/driver/testdata",
       "gs://${google_storage_bucket.test-artefacts.name}/",
     ])
