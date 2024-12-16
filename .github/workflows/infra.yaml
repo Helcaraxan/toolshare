@@ -25,6 +25,7 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.10.2
+          terraform_wrapper: false
 
       - name: Authenticate GCP
         id: auth-gcp
@@ -38,10 +39,14 @@ jobs:
         id: plan-bootstrap
         run: scripts/terraform.sh terraform/bootstrap plan -out=bootstrap.tfplan
 
+      - name: Plan - CI Infra
+        id: plan-ci-infra
+        run: scripts/terraform.sh terraform/ci-infra plan -out=ci-infra.tfplan
+
       - name: Upload Artefacts
         id: upload-artefacts
         uses: actions/upload-artifact@v4
-        if: ${{ steps.plan-bootstrap.outputs.changes }}
+        if: ${{ steps.plan-bootstrap.outputs.changes || steps.plan-ci-infra.outputs.changes }}
         with:
           name: terraform-plans
           path: "*.tfplan"
@@ -50,6 +55,7 @@ jobs:
 
     outputs:
       bootstrap_changes: ${{ steps.plan-bootstrap.outputs.changes }}
+      ci_infra_changes: ${{ steps.plan-ci-infra.outputs.changes }}
 
   apply:
     name: Apply
@@ -58,7 +64,11 @@ jobs:
     permissions:
       contents: write
       id-token: write
-    if: ${{ github.ref == 'refs/heads/main' && needs.plan.outputs.bootstrap_changes }}
+    if: |-
+      ${{
+        github.ref == 'refs/heads/main' &&
+        (needs.plan.outputs.bootstrap_changes || needs.plan.outputs.ci_infra_changes)
+      }}
     steps:
       - name: Checkout Code
         id: checkout
@@ -85,6 +95,11 @@ jobs:
           name: terraform-plans
 
       - name: Apply - Bootstrap
-        id: run-apply
+        id: run-apply-bootstrap
         if: ${{ needs.plan.outputs.bootstrap_changes }}
         run: scripts/terraform.sh terraform/bootstrap apply -auto-approve bootstrap.tfplan
+
+      - name: Apply - CI Infra
+        id: run-apply-ci-infra
+        if: ${{ needs.plan.outputs.ci_infra_changes }}
+        run: scripts/terraform.sh terraform/ci_infra apply -auto-approve ci-infra.tfplan
