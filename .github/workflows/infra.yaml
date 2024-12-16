@@ -6,7 +6,7 @@ env:
   TF_VAR_github_owner: ${{ github.repository_owner }}
   TF_VAR_github_owner_id: ${{ github.repository_owner_id }}
   TF_VAR_github_slug: ${{ github.repository }}
-  TF_VAR_google_project: ${{ secrets.google_project_id }}
+  TF_VAR_google_project_id: ${{ vars.google_project_id }}
 
 jobs:
   plan:
@@ -31,8 +31,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           create_credentials_file: true
-          workload_identity_provider: projects/${{ secrets.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
-          service_account: toolshare-ci@${{ secrets.google_project_id }}.iam.gserviceaccount.com
+          workload_identity_provider: projects/${{ vars.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
+          service_account: toolshare-ci@${{ vars.google_project_id }}.iam.gserviceaccount.com
 
       - name: Plan - Bootstrap
         id: plan-bootstrap
@@ -75,8 +75,8 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           create_credentials_file: true
-          workload_identity_provider: projects/${{ secrets.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
-          service_account: toolshare-ci@${{ secrets.google_project_id }}.iam.gserviceaccount.com
+          workload_identity_provider: projects/${{ vars.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
+          service_account: toolshare-ci@${{ vars.google_project_id }}.iam.gserviceaccount.com
 
       - name: Download Artefacts
         id: download-artefacts
