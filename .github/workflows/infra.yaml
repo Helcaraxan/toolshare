@@ -49,7 +49,7 @@ jobs:
         if: ${{ steps.plan-bootstrap.outputs.changes || steps.plan-ci-infra.outputs.changes }}
         with:
           name: terraform-plans
-          path: "*.tfplan"
+          path: terraform/**/*.tfplan
           retention-days: 1 # We don't want to keep potentially stale plans around for long.
           if-no-files-found: ignore
 
@@ -102,4 +102,4 @@ jobs:
       - name: Apply - CI Infra
         id: run-apply-ci-infra
         if: ${{ needs.plan.outputs.ci_infra_changes }}
-        run: scripts/terraform.sh terraform/ci_infra apply -auto-approve ci-infra.tfplan
+        run: scripts/terraform.sh terraform/ci-infra apply -auto-approve ci-infra.tfplan
