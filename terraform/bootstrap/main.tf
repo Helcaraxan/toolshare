@@ -76,6 +76,7 @@ resource "google_project_iam_member" "this" {
   for_each = toset([
     "roles/iam.securityAdmin",
     "roles/iam.workloadIdentityPoolViewer",
+    "roles/storage.admin",
   ])
 
   project = var.google_project_id
@@ -108,10 +109,4 @@ resource "google_storage_bucket" "this" {
   labels = local.labels
 
   depends_on = [google_project_service.this]
-}
-
-resource "google_storage_bucket_iam_member" "owner" {
-  bucket = google_storage_bucket.this.id
-  role   = "roles/storage.admin"
-  member = google_service_account.this.member
 }
