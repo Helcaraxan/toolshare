@@ -84,9 +84,11 @@ jobs:
         id: auth-gcp
         uses: google-github-actions/auth@v2
         with:
-          create_credentials_file: true
+          project_id: ${{ vars.google_project_id }}
           workload_identity_provider: projects/${{ vars.google_project_number }}/locations/global/workloadIdentityPools/ci-automation/providers/github # yamllint disable-line rule:line-length
           service_account: toolshare-ci@${{ vars.google_project_id }}.iam.gserviceaccount.com
+          create_credentials_file: true
+          export_environment_variables: true
 
       - name: Download Artefacts
         id: download-artefacts
