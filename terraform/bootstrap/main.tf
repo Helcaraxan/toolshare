@@ -78,7 +78,7 @@ resource "google_project_iam_member" "this" {
     "roles/iam.workloadIdentityPoolViewer",
   ])
 
-  project = var.google_project
+  project = var.google_project_id
   member  = google_service_account.this.member
   role    = each.value
 }
