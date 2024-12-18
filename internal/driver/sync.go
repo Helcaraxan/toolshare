@@ -46,13 +46,13 @@ func registerSyncFlags(cmd *cobra.Command, opts *syncOptions) {
 		&opts.tools,
 		"tools",
 		nil,
-		"List of tools to sync to. If left empty all pinned tools in the current environment will be syncd to.",
+		"List of tools to sync to. If left empty all pinned tools in the current environment will be sync'd to.",
 	)
 	cmd.Flags().StringVar(
 		&opts.mode,
 		"mode",
 		syncModeFetch,
-		"Actions to take: 'shim' to only create shim scripts, 'fetch' to download syncd-to binaries as well",
+		"Actions to take: 'shim' to only create shim scripts, 'fetch' to download sync'd binaries as well",
 	)
 }
 

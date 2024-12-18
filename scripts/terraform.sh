@@ -31,7 +31,7 @@ plan)
   )
   ;;
 *)
-  log_fatal "Unsupport Terraform command '${action}'."
+  log_fatal "Unsupported Terraform command '${action}'."
   ;;
 esac
 
