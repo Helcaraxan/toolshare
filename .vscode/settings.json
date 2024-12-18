@@ -6,6 +6,9 @@
   "go.lintOnSave": "package",
   "go.lintTool": "golangci-lint",
   "gopls": {
+    "build.buildFlags": [
+      "-tags=e2e",
+    ],
     "formatting.gofumpt": true,
     "ui.semanticTokens": true,
   },
