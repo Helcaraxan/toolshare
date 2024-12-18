@@ -1,0 +1,19 @@
+{
+  "recommendations": [
+    "EditorConfig.EditorConfig",
+    "Rubymaniac.vscode-direnv",
+    "bierner.markdown-mermaid",
+    "foxundermoon.shell-format",
+    "github.vscode-github-actions",
+    "golang.go",
+    "hashicorp.hcl",
+    "hashicorp.terraform",
+    "mikestead.dotenv",
+    "redhat.vscode-yaml",
+    "sidneys1.gitconfig",
+    "streetsidesoftware.code-spell-checker",
+    "timonwong.shellcheck",
+    "waderyan.gitblame",
+    "yzhang.markdown-all-in-one",
+  ]
+}

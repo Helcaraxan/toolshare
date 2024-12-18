@@ -1,0 +1,32 @@
+{
+  "cSpell.autoFormatConfigFile": true,
+  "go.coverOnSingleTest": true,
+  "go.coverOnSingleTestFile": true,
+  "go.disableConcurrentTests": true,
+  "go.lintOnSave": "package",
+  "go.lintTool": "golangci-lint",
+  "gopls": {
+    "formatting.gofumpt": true,
+    "ui.semanticTokens": true,
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "yzhang.markdown-all-in-one",
+  },
+  "search.useIgnoreFiles": true,
+  "search.useParentIgnoreFiles": true,
+  "shellcheck.customArgs": [
+    "--external-sources",
+  ],
+  "terraform.codelens.referenceCount": true,
+  "[terraform]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSaveMode": "file",
+  },
+  "[terraform-vars]": {
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSaveMode": "file",
+  },
+  "[yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml",
+  },
+}

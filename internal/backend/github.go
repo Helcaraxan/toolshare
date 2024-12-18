@@ -77,13 +77,13 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	defer cancel()
 
 	log := s.log.With(zap.Stringer("tool", b))
-	reposlug := strings.Split(s.GitHubSlug, "/")
-	if len(reposlug) != 2 {
+	repoSlug := strings.Split(s.GitHubSlug, "/")
+	if len(repoSlug) != 2 {
 		log.Error("Invalid repo slug.", zap.String("slug", s.GitHubSlug))
 		return nil, ErrInvalidGitHubSlug
 	}
 
-	gr, err := s.getRelease(ctx, log, reposlug, b.Version)
+	gr, err := s.getRelease(ctx, log, repoSlug, b.Version)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func (s *GitHub) Fetch(b config.Binary) ([]byte, error) {
 	}
 
 	log.Debug("Downloading the release asset.")
-	dl, _, err := s.client.Repositories.DownloadReleaseAsset(ctx, reposlug[0], reposlug[1], a.GetID(), http.DefaultClient)
+	dl, _, err := s.client.Repositories.DownloadReleaseAsset(ctx, repoSlug[0], repoSlug[1], a.GetID(), http.DefaultClient)
 	if err != nil {
 		log.Error("Could not get download handle for the release asset.", zap.Error(err))
 		return nil, fmt.Errorf("failed to get link to asset %q from release %q in repository %q: %w", assetName, b.Version, s.GitHubSlug, err)
@@ -125,11 +125,11 @@ func (s *GitHub) Store(_ config.Binary, _ []byte) error {
 	return errFailed
 }
 
-func (s *GitHub) getRelease(ctx context.Context, log *zap.Logger, reposlug []string, version string) (*github.RepositoryRelease, error) {
+func (s *GitHub) getRelease(ctx context.Context, log *zap.Logger, repoSlug []string, version string) (*github.RepositoryRelease, error) {
 	page := 1
 	var gr *github.RepositoryRelease
 	for {
-		releases, resp, listErr := s.client.Repositories.ListReleases(ctx, reposlug[0], reposlug[1], &github.ListOptions{
+		releases, resp, listErr := s.client.Repositories.ListReleases(ctx, repoSlug[0], repoSlug[1], &github.ListOptions{
 			Page:    page,
 			PerPage: 50,
 		})
