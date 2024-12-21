@@ -128,7 +128,7 @@ func (o *syncOptions) sync() error {
 }
 
 func (o *syncOptions) syncInitShimFolder() error {
-	subscriptionsPath := o.subscriptionDir()
+	subscriptionsPath := config.SubscriptionDir()
 	log := o.Log.With(zap.String("subscriptions-path", subscriptionsPath))
 
 	if _, err := os.Stat(subscriptionsPath); err != nil {
@@ -202,7 +202,7 @@ func (o *syncOptions) syncCreateShim(name string) bool {
 // to point to the old content while any new file descriptors will appropriately read the new
 // content.
 func (o *syncOptions) syncWriteShim(name, content string) error {
-	shimDir := o.subscriptionDir()
+	shimDir := config.SubscriptionDir()
 
 	shim, err := os.CreateTemp(shimDir, name)
 	if err != nil {
@@ -227,8 +227,4 @@ func (o *syncOptions) syncWriteShim(name, content string) error {
 	}
 	o.Log.Debug("Successfully wrote subscription shim.")
 	return nil
-}
-
-func (o *syncOptions) subscriptionDir() string {
-	return filepath.Join(config.UserDir(), "subscriptions")
 }

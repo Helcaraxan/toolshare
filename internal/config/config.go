@@ -99,19 +99,6 @@ func Parse(log *zap.Logger, conf *Global) error {
 	return nil
 }
 
-func StorageDir() string {
-	switch runtime.GOOS {
-	case "darwin":
-		return filepath.Join("/var/tmp", DriverName)
-	case "linux":
-		return filepath.Join("/var/cache", DriverName)
-	case "windows":
-		return filepath.Join(os.Getenv("PROGRAMDATA"), DriverName)
-	default:
-		panic("unsupported platform")
-	}
-}
-
 func AllDirs() []string {
 	// We need the config directories in reverse-order of priority such that we can safely unmarshal
 	// them in order into the same target struct and guarantee the expected semantics.
@@ -150,4 +137,12 @@ func UserDir() string {
 	default:
 		panic("unsupported platform")
 	}
+}
+
+func StorageDir() string {
+	return filepath.Join(UserDir(), "cache")
+}
+
+func SubscriptionDir() string {
+	return filepath.Join(UserDir(), "subscriptions")
 }
