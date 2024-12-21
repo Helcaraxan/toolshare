@@ -3,4 +3,4 @@
 sources:
   my-tool:
     s3_bucket: my-s3-bucket
-    s3_path_template: /test-tool/{os}-{arch}-{version}{exe}
+    s3_path_template: /test-tool/{platform}-{arch}-{version}{exe}

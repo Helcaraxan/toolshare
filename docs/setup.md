@@ -5,13 +5,7 @@
 **Typically any initialisation is done automatically and silently when `toolshare` is invoked for the first time on a
 new system**.
 
-This mainly involves setting up the folder and file structure that is used for binary caching.  Alternatively it is
-possible to invoke `toolshare init` to run or rerun the initialisation explicitly. This might help recover a defective
-setup if manual changes have been made to the files that `toolshare` uses.
-
-When used as `toolshare init --force` it results in a clean-slate setup and the deletion of any pre-existing files and
-folders. A manual confirmation will be required as this might result in the deletion of a large amount of cached assets,
-or in the case of a script one can pass the `--assume-yes` flag to bypass the confirmation.
+This mainly involves setting up the folder and file structure that is used for binary caching.
 
 ## Environments
 

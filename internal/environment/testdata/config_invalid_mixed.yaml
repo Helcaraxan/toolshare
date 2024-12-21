@@ -2,4 +2,4 @@
 sources:
   my-tool:
     github_slug: repo/tool
-    https_url_template: scheme://test-tool/{os}-{arch}-{version}{exe}
+    https_url_template: scheme://test-tool/{platform}-{arch}-{version}{exe}
