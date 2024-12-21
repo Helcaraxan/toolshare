@@ -1,8 +1,10 @@
 {
   "recommendations": [
+    "DavidAnson.vscode-markdownlint",
     "EditorConfig.EditorConfig",
     "Rubymaniac.vscode-direnv",
     "bierner.markdown-mermaid",
+    "christian-kohler.path-intellisense",
     "foxundermoon.shell-format",
     "github.vscode-github-actions",
     "golang.go",

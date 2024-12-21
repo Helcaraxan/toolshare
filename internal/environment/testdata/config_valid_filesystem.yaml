@@ -2,4 +2,4 @@
 ---
 sources:
   my-tool:
-    file_path_template: file:///my-s3-bucket/test-tool/{os}-{arch}-{version}{exe}
+    file_path_template: file:///my-s3-bucket/test-tool/{platform}-{arch}-{version}{exe}
