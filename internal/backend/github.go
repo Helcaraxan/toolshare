@@ -138,16 +138,15 @@ func (s *GitHub) getRelease(ctx context.Context, log *zap.Logger, repoSlug []str
 		} else if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("failed to list releases page %d for %q: %s: %w", page, s.GitHubSlug, resp.Status, ErrGitHubAPIError)
 		}
-		log.Debug("Listing GitHub releases", zap.Int("release-count", len(releases)))
-
+		log.Debug("Retrieved GitHub releases.", zap.Int("release-count", len(releases)))
 		for _, r := range releases {
-			if r.GetName() == version {
+			if strings.TrimLeft(r.GetTagName(), "v") == strings.TrimLeft(version, "v") {
 				gr = r
 				log.Debug("Found targeted release.")
 				break
 			}
 		}
-		if gr != nil || page == resp.LastPage {
+		if gr != nil || resp.NextPage == 0 {
 			break
 		}
 		page = resp.NextPage
