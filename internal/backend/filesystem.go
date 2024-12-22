@@ -1,15 +1,11 @@
 package backend
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"os"
 	"path/filepath"
 
-	"github.com/go-git/go-billy/v5"
-	"github.com/go-git/go-billy/v5/memfs"
-	"github.com/go-git/go-billy/v5/osfs"
 	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
@@ -28,22 +24,13 @@ func (c FileSystemConfig) String() string {
 
 type FileSystem struct {
 	log     *zap.Logger
-	storage billy.Filesystem
 
 	FileSystemConfig
 }
 
-func NewFileSystem(logBuilder logger.Builder, c *FileSystemConfig, inMem bool) *FileSystem {
-	var fs billy.Filesystem
-	if inMem {
-		fs = memfs.New()
-	} else {
-		fs = osfs.New("/")
-	}
-
+func NewFileSystem(logBuilder logger.Builder, c *FileSystemConfig) *FileSystem {
 	return &FileSystem{
 		log:              logBuilder.Domain(logger.FileSystemDomain),
-		storage:          fs,
 		FileSystemConfig: *c,
 	}
 }
@@ -55,7 +42,7 @@ func (s *FileSystem) Path(b config.Binary) string {
 func (s *FileSystem) Fetch(b config.Binary) ([]byte, error) {
 	p := s.instantiateTemplate(b, s.FilePathTemplate)
 	log := s.log.With(zap.Stringer("tool", b), zap.String("local-path", p))
-	fd, err := s.storage.Open(p)
+	fd, err := os.Open(p)
 	if err != nil {
 		log.Error("Failed to open tool binary file.", zap.Error(err))
 		return nil, err
@@ -72,24 +59,36 @@ func (s *FileSystem) Store(b config.Binary, content []byte) error {
 	localPath := s.instantiateTemplate(b, s.FilePathTemplate)
 	log := s.log.With(zap.Stringer("tool", b), zap.String("local-path", localPath))
 
-	if _, err := s.storage.Stat(localPath); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(localPath); err != nil && !errors.Is(err, os.ErrNotExist) {
 		log.Error("Unable to check for a pre-existing tool binary.", zap.Error(err))
 		return err
-	} else if err == nil {
-		log.Error("Can not store binary as it is already present.", zap.Error(err))
-		return errFailed
 	}
 
-	if err := s.storage.MkdirAll(filepath.Dir(localPath), 0o755); err != nil {
+	toolDir := filepath.Dir(localPath)
+	if err := os.MkdirAll(toolDir, 0o755); err != nil {
+		log.Error("Failed to create directory to store tool binary.", zap.Error(err))
 		return err
 	}
 
-	w, err := s.storage.OpenFile(localPath, os.O_CREATE|os.O_WRONLY|os.O_EXCL, 0o755)
+	toolBin, err := os.CreateTemp(toolDir, b.Tool+"-*")
 	if err != nil {
+		log.Error("Failed to open temporary file to store tool binary.", zap.Error(err))
+		return err
+	} else if _, err = toolBin.Write(content); err != nil {
+		log.Error("Failed to write tool binary to temp file.", zap.Error(err))
+		return err
+	} else if err = toolBin.Close(); err != nil {
+		log.Error("Failed to close temporary tool binary file.", zap.Error(err))
+		return err
+	} else if err = os.Chmod(toolBin.Name(), 0o755); err != nil {
+			log.Error("Failed to make temporary tool binary file executable.", zap.Error(err))
+			return err
+		}
+
+	if err = os.Rename(toolBin.Name(), localPath); err != nil {
+		log.Error("Failed to move temporary tool binary to final path.", zap.Error(err))
 		return err
 	}
-	defer func() { _ = w.Close() }()
-
-	_, err = io.Copy(w, bytes.NewReader(content))
-	return err
+	log.Debug("Successfully stored tool binary.")
+	return nil
 }
