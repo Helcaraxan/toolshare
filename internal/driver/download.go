@@ -74,7 +74,7 @@ func (o downloadOptions) download() error {
 	if o.version == "" {
 		tool, ok := o.Env[o.tool]
 		if !ok {
-			log.Error("Tool is not ")
+			log.Error("Tool could not be found in the current toolshare environment. Use 'toolshare env' go get an overview of currently registered tools.")
 			return ErrUnknownTool
 		}
 		o.version = tool.Version
@@ -151,6 +151,7 @@ func (o downloadOptions) setupBackends() (*storages, error) {
 		default:
 			return nil, ErrInvalidCacheConfig
 		}
+		o.Log.Debug("Configured remote cache backend.", zap.Stringer("remote-cache", backends.remote))
 	}
 
 	return backends, nil
@@ -161,28 +162,33 @@ func (o downloadOptions) getToolBinary(backends *storages, binary config.Binary)
 
 	log := o.Log.With(zap.Stringer("tool", binary), zap.String("cache-path", path))
 	if _, err := os.Stat(path); err == nil {
+		log.Debug("Found binary in local storage.")
 		return path, nil
 	} else if !errors.Is(err, os.ErrNotExist) {
 		log.Error("Could not determine presence of tool binary.", zap.Error(err))
 		return "", err
 	}
+	log.Debug("Binary not present in local storage.")
 
-	var fetchErr error
+	fetchErr := ErrNoBackends
 	for _, s := range []backend.Storage{backends.remote, backends.source} {
+		if s == nil {
+			continue
+		}
+
 		sLog := log.With(zap.Stringer("storage", s))
-		sLog.Debug("Attempting to fetch binary from storage.")
-		if s != nil {
-			var raw []byte
-			raw, fetchErr = s.Fetch(binary)
-			sLog.Debug("Fetched binary from storage.")
-			if fetchErr == nil {
-				if err := backends.local.Store(binary, raw); err != nil {
-					log.Debug("Failed to store binary in local cache.", zap.Error(err))
-					return "", err
-				}
-				log.Debug("Successfully stored binary in local cache.")
-				break
+		sLog.Debug("Attempting to fetch binary.")
+
+		var raw []byte
+		raw, fetchErr = s.Fetch(binary)
+		sLog.Debug("Fetched binary from storage.")
+		if fetchErr == nil {
+			if err := backends.local.Store(binary, raw); err != nil {
+				log.Debug("Failed to store binary in local cache.", zap.Error(err))
+				return "", err
 			}
+			log.Debug("Successfully stored binary in local cache.")
+			break
 		}
 	}
 	if fetchErr != nil {

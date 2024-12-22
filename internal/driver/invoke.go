@@ -65,7 +65,7 @@ func (o *invokeOptions) invoke() error {
 		version = o.Env[o.tool].Version
 	}
 	if version == "" {
-		log.Error("Tool was not found or could not be resolved to a version to use")
+		log.Error("Tool is not present in current toolshare environment or could not be resolved to a version to use")
 		os.Exit(invokeExitCode)
 	}
 	log = log.With(zap.String("tool-version", version))
@@ -109,6 +109,8 @@ func (o *invokeOptions) invoke() error {
 }
 
 func (o *invokeOptions) ensureTool(log *zap.Logger, version string) (string, error) {
+	log.Debug("Ensuring presence of tool binary.")
+
 	dl := &downloadOptions{
 		CommonOpts: o.CommonOpts,
 		tool:       o.tool,
