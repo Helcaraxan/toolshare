@@ -31,7 +31,7 @@ follows:
 	version for the config. The configuration directory is '$HOME/.config/%s' on Linux and MacOS
 	and '%%LOCALAPPDATA%%/%s' on Windows.
   - Looking for a system-level configuration file pinning a version for the config. This is
-	'/etc/%s/toolsharerc' on Linux and MacOS and '%%PROGRAMDATA%%/%s/toolsharerc on
+	'/etc/%s/toolshare.yaml' on Linux and MacOS and '%%PROGRAMDATA%%/%s/toolshare.yaml on
 	Windows.
   - If, and only if, running unpinned versions is not prohibited by the local configuration we check
     the global state for the default version, if one is available.`, config.DriverName, config.DriverName, config.DriverName, config.DriverName, config.DriverName, config.DriverName),

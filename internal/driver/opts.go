@@ -17,6 +17,7 @@ var (
 	ErrFailedShimCreation   = errors.New("failed to create tool shim")
 	ErrInvalidCacheConfig   = errors.New("invalid cache configuration")
 	ErrInvalidToolshareShim = fmt.Errorf("can not create shim for tool with the same name as the driver %q", config.DriverName)
+	ErrNoBackends           = errors.New("no backend found")
 	ErrNoToolSet            = errors.New("no tool set")
 	ErrUnknownSyncMode      = errors.New("unknown sync mode")
 	ErrUnknownTool          = errors.New("tool unknown in current environment")
