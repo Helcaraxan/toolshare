@@ -23,7 +23,7 @@ func (c FileSystemConfig) String() string {
 }
 
 type FileSystem struct {
-	log     *zap.Logger
+	log *zap.Logger
 
 	FileSystemConfig
 }
@@ -81,9 +81,9 @@ func (s *FileSystem) Store(b config.Binary, content []byte) error {
 		log.Error("Failed to close temporary tool binary file.", zap.Error(err))
 		return err
 	} else if err = os.Chmod(toolBin.Name(), 0o755); err != nil {
-			log.Error("Failed to make temporary tool binary file executable.", zap.Error(err))
-			return err
-		}
+		log.Error("Failed to make temporary tool binary file executable.", zap.Error(err))
+		return err
+	}
 
 	if err = os.Rename(toolBin.Name(), localPath); err != nil {
 		log.Error("Failed to move temporary tool binary to final path.", zap.Error(err))

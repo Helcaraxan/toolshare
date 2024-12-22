@@ -5,7 +5,7 @@
 set -e -u -o pipefail
 
 function setup_toolshare() {
-  local -l gobin preceding_tag sync_mode toolshare_bin
+  local -l gobin preceding_tag toolshare_bin
 
   gobin="$(go env GOPATH)/bin"
   subscriptions_path="${XDG_CONFIG_HOME:-"${HOME}/.config"}/toolshare/subscriptions"
@@ -16,8 +16,6 @@ function setup_toolshare() {
 
     echo "Installing toolshare from HEAD for CI purposes."
     go build -o "${gobin}/toolshare" .
-
-    sync_mode="fetch"
   else
     export PATH="${subscriptions_path}:${gobin}:${PATH}"
 
@@ -32,11 +30,9 @@ function setup_toolshare() {
       echo "Installing toolshare@${preceding_tag} to use the last release preceding the current HEAD. This may take some time."
       go install "github.com/Helcaraxan/toolshare@${preceding_tag}"
     fi
-
-    sync_mode="shim"
   fi
 
-  toolshare sync --mode="${sync_mode}" 2>/dev/null
+  toolshare sync --mode=shim
 }
 
 setup_toolshare

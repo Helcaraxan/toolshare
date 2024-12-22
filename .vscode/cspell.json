@@ -55,6 +55,7 @@
     "elts",
     "envrc",
     "exitcode",
+    "filelock",
     "goarch",
     "gobin",
     "golangci",

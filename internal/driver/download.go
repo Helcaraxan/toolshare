@@ -13,6 +13,7 @@ import (
 
 	"github.com/Helcaraxan/toolshare/internal/backend"
 	"github.com/Helcaraxan/toolshare/internal/config"
+	"github.com/Helcaraxan/toolshare/internal/flock"
 )
 
 func Download(cOpts *CommonOpts) *cobra.Command {
@@ -159,16 +160,36 @@ func (o downloadOptions) setupBackends() (*storages, error) {
 
 func (o downloadOptions) getToolBinary(backends *storages, binary config.Binary) (string, error) {
 	path := backends.local.Path(binary)
+	log := o.Log.With(zap.Stringer("tool", binary), zap.String("cache-path", path), zap.Int("pid", os.Getpid()))
 
-	log := o.Log.With(zap.Stringer("tool", binary), zap.String("cache-path", path))
-	if _, err := os.Stat(path); err == nil {
-		log.Debug("Found binary in local storage.")
-		return path, nil
-	} else if !errors.Is(err, os.ErrNotExist) {
-		log.Error("Could not determine presence of tool binary.", zap.Error(err))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		log.Error("Failed to prepare target folder for tool download.")
 		return "", err
 	}
-	log.Debug("Binary not present in local storage.")
+
+	for {
+		if _, err := os.Stat(path); err == nil {
+			log.Debug("Found binary in local storage.")
+			return path, nil
+		} else if !errors.Is(err, os.ErrNotExist) {
+			log.Error("Could not determine presence of tool binary.", zap.Error(err))
+			return "", err
+		}
+		log.Debug("Binary not present in local storage.")
+
+		ok, err := flock.AcquireFileLock(log, path)
+		if err != nil {
+			log.Error("Failed to acquire download lock.", zap.Error(err))
+		} else if ok {
+			break
+		}
+	}
+
+	defer func() {
+		if err := flock.ReleaseFileLock(log, path); err != nil {
+			log.Warn("Failed to release download lock correctly.", zap.Error(err))
+		}
+	}()
 
 	fetchErr := ErrNoBackends
 	for _, s := range []backend.Storage{backends.remote, backends.source} {
