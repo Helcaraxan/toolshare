@@ -14,7 +14,7 @@ fi
 #  - On a non-default branch this will be the merge-base with the default branch.
 function git_base_ref() {
   local current_branch default_branch
-  if [[ "${CI:-}" == "true" ]] && [[ -n "${GITHUB_BASE_REF:-}" ]]; then
+  if [[ "${GITHUB_ACTIONS:-}" == "true" ]] && [[ -n "${GITHUB_BASE_REF:-}" ]]; then
     git rev-parse "${GITHUB_BASE_REF}"
     return
   fi

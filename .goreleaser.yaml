@@ -1,0 +1,37 @@
+---
+version: 2
+
+builds:
+  - binary: toolshare
+    main: .
+    ignore:
+      - goos: darwin
+        goarch: '386'
+
+archives:
+  - format: binary
+
+changelog:
+  sort: ''
+  use: github
+  groups:
+    - title: Features
+      regexp: '^feat:'
+      order: 0
+    - title: Bugfixes
+      regexp: '^bug:'
+      order: 1
+  filters:
+    include:
+      - '^bug:'
+      - '^feat:'
+
+checksum:
+  disable: false
+  name_template: '{{ .ProjectName }}-{{ .Version }}-checksums.txt'
+
+release:
+  mode: replace
+  skip_upload: false
+  replace_existing_artifacts: true
+  use_existing_draft: true
