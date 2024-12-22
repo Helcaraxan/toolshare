@@ -2,6 +2,7 @@
 ---
 pins:
   golangci-lint: 1.61.0
+  goreleaser: 2.5.0
   shellcheck: 0.10.0
   shfmt: 3.10.0
   terraform: 1.10.3
@@ -16,6 +17,14 @@ sources:
       arm32: armv7
       x86_32: '386'
       x86_64: amd64
+  goreleaser:
+    github_slug: goreleaser/goreleaser
+    github_release_asset_template: '{tool}_{platform}_{arch}.tar.gz'
+    archive_path_template: '{tool}'
+    template_mappings:
+      windows: Windows
+      linux: Linux
+      darwin: Darwin
   shellcheck:
     github_slug: koalaman/shellcheck
     github_release_asset_template: '{tool}-v{version}.{platform}.{arch}.tar.xz'
