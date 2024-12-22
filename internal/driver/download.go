@@ -124,7 +124,7 @@ func (o downloadOptions) setupBackends() (*storages, error) {
 	backends := &storages{
 		local: backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
 			FilePathTemplate: filepath.Join(append([]string{config.StorageDir()}, cacheURLTemplate...)...),
-		}, false),
+		}),
 		source: o.Env.Source(o.LogBuilder, o.tool),
 	}
 
@@ -147,7 +147,7 @@ func (o downloadOptions) setupBackends() (*storages, error) {
 		case o.Config.RemoteCache.PathPrefix != "":
 			backends.remote = backend.NewFileSystem(o.LogBuilder, &backend.FileSystemConfig{
 				FilePathTemplate: strings.Join(append([]string{o.Config.RemoteCache.PathPrefix}, cacheURLTemplate...), "/"),
-			}, false)
+			})
 		default:
 			return nil, ErrInvalidCacheConfig
 		}

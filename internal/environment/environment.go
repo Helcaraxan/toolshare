@@ -112,7 +112,7 @@ func (e Environment) Source(logBuilder logger.Builder, tool string) backend.Stor
 
 	switch {
 	case sc.FileSystemConfig != nil:
-		return backend.NewFileSystem(logBuilder, sc.FileSystemConfig, false)
+		return backend.NewFileSystem(logBuilder, sc.FileSystemConfig)
 	case sc.GCSConfig != nil:
 		return backend.NewGCS(logBuilder, sc.GCSConfig)
 	case sc.GitHubConfig != nil:
