@@ -21,8 +21,7 @@ func Invoke(cOpts *CommonOpts) *cobra.Command {
 	}
 
 	cmd := &cobra.Command{
-		Use:   "invoke [--] <tool-name> [<tool-args>]",
-		Args:  cobra.MaximumNArgs(1),
+		Use:   "invoke --tool=<tool-name> [--] [<tool-args>]",
 		Short: "Run a tool with the given arguments.",
 		Long: fmt.Sprintf(`Run a tool at a version determined by the current environment with the given arguments. For details
 about how the current environment is determined please see '%s env --help'.`, config.DriverName),
