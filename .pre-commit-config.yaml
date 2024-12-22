@@ -26,10 +26,6 @@ repos:
     hooks:
       - id: check-json5
         files: ^.vscode\/.*\.json$
-  - repo: https://github.com/maxwinterstein/shfmt-py
-    rev: v3.7.0.1
-    hooks:
-      - id: shfmt
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
@@ -41,7 +37,11 @@ repos:
         exclude: ^\.vscode/.*\.json$
       - id: check-merge-conflict
       - id: check-shebang-scripts-are-executable
-        exclude: ^scripts\/lib\/.*$
+        exclude: |-
+          (?x)^(
+            \.envrc|
+            scripts\/lib\/.*
+          )$
       - id: check-symlinks
       - id: check-vcs-permalinks
       - id: check-yaml
@@ -72,7 +72,17 @@ repos:
     rev: v1.7.3
     hooks:
       - id: actionlint
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.10.0.1
+
+  # -- Repo local hooks
+  - repo: local
     hooks:
+      - id: shfmt
+        name: shfmt
+        entry: scripts/hook_shfmt.sh
+        language: script
+        types: [shell]
       - id: shellcheck
+        name: shellcheck
+        entry: scripts/hook_shellcheck.sh
+        language: script
+        types: [shell]

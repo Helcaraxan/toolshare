@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -47,11 +48,16 @@ https://github.com/Helcaraxan/toolshare/docs/setup.md
 }
 
 func registerRootFlags(cmd *cobra.Command, opts *driver.CommonOpts) {
+	var defaultVal []string
+	if envFlag, ok := os.LookupEnv("TOOLSHARE_VERBOSE"); ok {
+		defaultVal = strings.Split(envFlag, ",")
+	}
+
 	cmd.PersistentFlags().StringSliceVarP(
 		&opts.Verbose,
 		"verbose",
 		"v",
-		nil,
+		defaultVal,
 		"Verbose output. See 'toolshare --help' for more information.",
 	)
 	cmd.Flag("verbose").NoOptDefVal = "all"
