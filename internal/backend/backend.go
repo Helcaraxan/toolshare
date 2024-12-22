@@ -9,8 +9,10 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"regexp"
 	"strings"
 
+	"github.com/ulikunitz/xz"
 	"go.uber.org/zap"
 
 	"github.com/Helcaraxan/toolshare/internal/config"
@@ -143,16 +145,23 @@ func (c *CommonConfig) extractFromArchive(log *zap.Logger, srcRaw []byte, srcPat
 	case strings.HasSuffix(srcPath, ".zip"):
 		rd, err = c.extractFromArchiveZIP(log, srcRaw, archivePath)
 
-	case strings.HasSuffix(srcPath, ".tar.gz"):
-		log.Debug("Applying a GZIP decoder on the fetched content.")
-		rd, err = gzip.NewReader(bytes.NewBuffer(srcRaw))
-		if err != nil {
-			log.Error("Failed to open fetched content with a GZIP reader.", zap.Error(err))
-			return nil, fmt.Errorf("failed to open gzip reader for fetched content: %w", err)
+	case regexp.MustCompile(".tar(.(g|x)z)?$").MatchString(srcPath):
+		switch {
+		case strings.HasSuffix(srcPath, ".gz"):
+			log.Debug("Applying a GZIP decoder on the fetched content.")
+			rd, err = gzip.NewReader(bytes.NewBuffer(srcRaw))
+			if err != nil {
+				log.Error("Failed to open fetched content with a GZIP reader.", zap.Error(err))
+				return nil, fmt.Errorf("failed to open gzip reader for fetched content: %w", err)
+			}
+		case strings.HasSuffix(srcPath, "xz"):
+			log.Debug("Applying an XZ decoder on the fetched content.")
+			rd, err = xz.NewReader(bytes.NewBuffer(srcRaw))
+			if err != nil {
+				log.Error("Failed to open fetched content with an XZ reader.", zap.Error(err))
+				return nil, fmt.Errorf("failed to open xz reader for fetched content: %w", err)
+			}
 		}
-		fallthrough
-
-	case strings.HasSuffix(srcPath, ".tar"):
 		rd, err = c.extractFromArchiveTAR(log, srcRaw, archivePath, rd)
 
 	default:
