@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=environment.schema.json
+---
+pins:
+  golangci-lint: 1.61.0
+  shellcheck: 0.10.0
+  shfmt: 3.10.0
+  terraform: 1.10.3
+  tflint: 0.54.0
+
+sources:
+  golangci-lint:
+    github_slug: golangci/golangci-lint
+    github_release_asset_template: '{tool}-{version}-{platform}-{arch}.tar.gz'
+    archive_path_template: '{tool}-{version}-{platform}-{arch}/{tool}{exe}'
+    template_mappings:
+      arm32: armv7
+      x86_32: '386'
+      x86_64: amd64
+  shellcheck:
+    github_slug: koalaman/shellcheck
+    github_release_asset_template: '{tool}-v{version}.{platform}.{arch}.tar.xz'
+    archive_path_template: '{tool}-v{version}/{tool}{exe}'
+    template_mappings:
+      arm64: aarch64
+  shfmt:
+    github_slug: mvdan/sh
+    github_release_asset_template: '{tool}_v{version}_{platform}_{arch}{exe}'
+    template_mappings:
+      arm32: arm
+      x86_32: '386'
+      x86_64: amd64
+  terraform:
+    https_url_template: https://releases.hashicorp.com/{tool}/{version}/{tool}_{version}_{platform}_{arch}.zip
+    archive_path_template: "{tool}{exe}"
+    template_mappings:
+      arm32: arm
+      x86_32: '386'
+      x86_64: amd64
+  tflint:
+    github_slug: terraform-linters/tflint
+    github_release_asset_template: '{tool}_{platform}_{arch}.zip'
+    archive_path_template: '{tool}{exe}'
+    template_mappings:
+      arm32: arm
+      x86_32: '386'
+      x86_64: amd64

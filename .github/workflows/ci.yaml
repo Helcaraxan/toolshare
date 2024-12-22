@@ -12,7 +12,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          fetch-tags: true
+
+      - name: Install Python
+        id: install-python
+        uses: actions/setup-python@v5
 
       - name: Install Go
         id: install-go
@@ -20,22 +23,9 @@ jobs:
         with:
           go-version: stable
 
-      - name: Install Python
-        id: install-python
-        uses: actions/setup-python@v5
-
-      - name: Install Terraform
-        id: install-terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: 1.10.2
-          terraform_wrapper: false
-
-      - name: Install TFLint
-        id: install-tflint
-        uses: terraform-linters/setup-tflint@v4
-        with:
-          tflint_version: v0.52.0
+      - name: Setup Toolshare
+        id: setup-toolshare
+        run: ./scripts/setup_toolshare.sh
 
       - name: Run pre-commit
         id: install-pre-commit

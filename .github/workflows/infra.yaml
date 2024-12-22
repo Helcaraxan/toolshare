@@ -19,13 +19,18 @@ jobs:
       - name: Checkout Code
         id: checkout
         uses: actions/checkout@v4
-
-      - name: Install Terraform
-        id: install-terraform
-        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.10.2
-          terraform_wrapper: false
+          fetch-depth: 0
+
+      - name: Install Go
+        id: install-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Setup Toolshare
+        id: setup-toolshare
+        run: ./scripts/setup_toolshare.sh
 
       - name: Authenticate GCP
         id: auth-gcp
@@ -73,12 +78,18 @@ jobs:
       - name: Checkout Code
         id: checkout
         uses: actions/checkout@v4
-
-      - name: Install Terraform
-        id: install-terraform
-        uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.10.2
+          fetch-depth: 0
+
+      - name: Install Go
+        id: install-go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Setup Toolshare
+        id: setup-toolshare
+        run: ./scripts/setup_toolshare.sh
 
       - name: Authenticate GCP
         id: auth-gcp
