@@ -29,7 +29,8 @@ func TestGitHub(t *testing.T) {
 			mock.GetReposReleasesByOwnerByRepo,
 			[]github.RepositoryRelease{
 				{
-					Name: strPtr("v1.2.3"),
+					Name:    strPtr("Best Release"),
+					TagName: strPtr("v1.2.3"),
 					Assets: []*github.ReleaseAsset{
 						{
 							ID:   strInt64(123456),
