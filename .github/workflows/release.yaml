@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - v*
+      - 'v*'
 
 permissions:
   contents: write
@@ -24,6 +24,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: stable
+
+      - name: Setup Toolshare
+        id: setup-toolshare
+        run: ./scripts/setup_toolshare.sh
 
       - name: Run GoReleaser
         id: run-goreleaser

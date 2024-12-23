@@ -1,7 +1,9 @@
 ---
 name: Deploy Infra
 on:
-  - push
+  push:
+    branches:
+      - '**'
 
 env:
   TF_VAR_github_owner: ${{ github.repository_owner }}
