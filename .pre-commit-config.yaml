@@ -7,18 +7,13 @@ repos:
     hooks:
       - id: yamllint
   - repo: https://github.com/antonbabenko/pre-commit-terraform
-    rev: v1.96.2
+    rev: v1.97.4
     hooks:
       - id: terraform_fmt
       - id: terraform_tflint
       - id: terraform_validate
-  - repo: https://github.com/golangci/golangci-lint
-    rev: v1.61.0
-    hooks:
-      - id: golangci-lint
-      - id: golangci-lint-config-verify
   - repo: https://github.com/igorshubovych/markdownlint-cli
-    rev: v0.42.0
+    rev: v0.44.0
     hooks:
       - id: markdownlint
   - repo: https://github.com/maresb/check-json5
@@ -64,18 +59,26 @@ repos:
           - --no-sort-keys
       - id: trailing-whitespace
   - repo: https://github.com/python-jsonschema/check-jsonschema
-    rev: 0.29.4
+    rev: 0.31.2
     hooks:
       - id: check-metaschema
         files: \.schema\.json$
   - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.3
+    rev: v1.7.7
     hooks:
       - id: actionlint
 
   # -- Repo local hooks
   - repo: local
     hooks:
+      # We don't use the official upstream pre-commit hooks as the golangci-lint-config-verify is broken.
+      - id: golangci-lint
+        name: Lint Go source code
+        entry: scripts/golangci-lint.sh
+        language: script
+        types_or: [go, go-mod, go-sum]
+        pass_filenames: false
+        require_serial: true
       - id: shfmt
         name: Format scripts with shfmt
         entry: scripts/hook_shfmt.sh
