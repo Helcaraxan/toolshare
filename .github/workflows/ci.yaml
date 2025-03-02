@@ -3,7 +3,7 @@ name: Test & Build
 on:
   push:
     branches:
-      - '**'
+      - "**"
 
 jobs:
   lint:
@@ -26,13 +26,29 @@ jobs:
         with:
           go-version: stable
 
+      - name: Setup Tools Cache
+        id: setup-cache-tools
+        uses: actions/cache@v4
+        with:
+          path: ~/.config/toolshare/cache
+          key: tool-binaries|${{ runner.os }}|${{ runner.arch }}|${{ hashFiles('.toolshare.yaml') }}
+          restore-keys: tool-binaries|${{ runner.os }}|${{ runner.arch }}|
+
+      - name: Setup Pre-Commit Cache
+        id: setup-cache-pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-3|${{ runner.os }}|${{ runner.arch }}|${{ hashFiles('.pre-commit-config.yaml', '.python-version') }}  # yamllint disable-line rule:line-length
+          restore-keys: pre-commit-3|${{ runner.os }}|${{ runner.arch }}|
+
       - name: Setup Toolshare
         id: setup-toolshare
         run: ./scripts/setup_toolshare.sh
 
       - name: Run pre-commit
-        id: install-pre-commit
-        uses: pre-commit/action@v3.0.1
+        id: run-pre-commit
+        run: pre-commit run --show-diff-on-failure --color=always
 
   build-and-test:
     name: Build & Test
