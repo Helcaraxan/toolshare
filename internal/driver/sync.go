@@ -90,20 +90,9 @@ func (o *syncOptions) sync() error {
 		return err
 	}
 
-	syncFailed := false
-	for _, name := range o.tools {
-		if _, ok := o.Env[name]; !ok {
-			log.Error("Tool not known in current environment.", zap.String("tool", name))
-			syncFailed = true
-			continue
-		}
-		syncFailed = syncFailed || !o.syncCreateShim(name)
+	if err := o.syncCreateShims(log); err != nil {
+		return err
 	}
-	if syncFailed {
-		log.Error("Failed to create shims for some tools.")
-		return ErrFailedShimCreation
-	}
-	log.Debug("Successfully created shims for all tools.")
 
 	// Exit early if we are not fetching binaries.
 	if o.mode != syncModeFetch {
@@ -152,6 +141,24 @@ func (o *syncOptions) syncInitShimFolder() error {
 		"Please add %q to your 'PATH' environment variable, preferably at the front, to start using new subscriptions.",
 		subscriptionsPath,
 	)
+	return nil
+}
+
+func (o *syncOptions) syncCreateShims(log *zap.Logger) error {
+	syncFailed := false
+	for _, name := range o.tools {
+		if _, ok := o.Env[name]; !ok {
+			log.Error("Tool not known in current environment.", zap.String("tool", name))
+			syncFailed = true
+			continue
+		}
+		syncFailed = syncFailed || !o.syncCreateShim(name)
+	}
+	if syncFailed {
+		log.Error("Failed to create shims for some tools.")
+		return ErrFailedShimCreation
+	}
+	log.Debug("Successfully created shims for all tools.")
 	return nil
 }
 

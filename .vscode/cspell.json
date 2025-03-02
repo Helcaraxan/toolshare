@@ -28,6 +28,7 @@
     "goccy",
     "gochecknoglobals",
     "gochecknoinits",
+    "gocritic",
     "godeps",
     "gofakes",
     "gogit",

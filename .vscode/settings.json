@@ -3,6 +3,9 @@
   "go.coverOnSingleTest": true,
   "go.coverOnSingleTestFile": true,
   "go.disableConcurrentTests": true,
+  "go.lintFlags": [
+    "--config=${workspaceFolder}/.golangci.yaml"
+  ],
   "go.lintOnSave": "package",
   "go.lintTool": "golangci-lint",
   "gopls": {
