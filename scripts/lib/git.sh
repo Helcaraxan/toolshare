@@ -24,7 +24,7 @@ function git_base_ref() {
   default_branch="${default_branch#"refs/remotes/"}"
   current_branch="${GITHUB_REF_NAME:-"$(git rev-parse --abbrev-ref HEAD)"}"
 
-  if [[ "${current_branch}" == "${default_branch}" ]]; then
+  if [[ "origin/${current_branch}" == "${default_branch}" ]]; then
     git rev-parse "${default_branch}~1"
   else
     git rev-parse "${default_branch}"
