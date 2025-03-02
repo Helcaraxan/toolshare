@@ -48,7 +48,7 @@ jobs:
 
       - name: Run pre-commit
         id: run-pre-commit
-        run: pre-commit run --show-diff-on-failure --color=always
+        run: ./scripts/pre-commit.sh
 
   build-and-test:
     name: Build & Test

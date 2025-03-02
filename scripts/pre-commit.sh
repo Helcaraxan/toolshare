@@ -6,7 +6,9 @@ command -v pre-commit >/dev/null 2>&1 || log_fatal "Ensure pre-commit is install
 
 log_info "Using pre-commit version: $(pre-commit --version)"
 
-pc_flags=()
+pc_flags=(
+  "--color=always"
+)
 if [[ -n "${DRIFT_CHECK:-}" ]]; then
   pc_flags+=("--all-files")
   log_warning "Running on full file content for drift check. This may take some extra time."
