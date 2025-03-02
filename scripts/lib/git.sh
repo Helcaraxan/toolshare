@@ -21,7 +21,7 @@ function git_base_ref() {
 
   git fetch --all >/dev/null
   default_branch="$(git symbolic-ref "refs/remotes/${GIT_REMOTE_NAME:-origin}/HEAD")"
-  default_branch="${default_branch#"refs/remotes/${GIT_REMOTE_NAME:-origin}/"}"
+  default_branch="${default_branch#"refs/remotes/"}"
   current_branch="${GITHUB_REF_NAME:-"$(git rev-parse --abbrev-ref HEAD)"}"
 
   if [[ "${current_branch}" == "${default_branch}" ]]; then
